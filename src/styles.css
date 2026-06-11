@@ -1,0 +1,170 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #e8e4dc;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root > canvas,
+#root > div > canvas {
+  display: block;
+}
+
+/* ---------- loading screen ---------- */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #efece6;
+  color: #2b2926;
+  transition: opacity 0.9s ease, visibility 0.9s;
+}
+
+.loading--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loading__inner {
+  text-align: center;
+  max-width: 420px;
+  padding: 0 24px;
+}
+
+.loading__title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.loading__sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: #8a857c;
+  line-height: 1.6;
+  margin-bottom: 36px;
+}
+
+.loading__bar {
+  height: 1px;
+  background: #d4d0c8;
+  margin-bottom: 36px;
+  overflow: hidden;
+}
+
+.loading__fill {
+  height: 100%;
+  background: #2b2926;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+
+.loading__enter {
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #2b2926;
+  background: none;
+  border: 1px solid #2b2926;
+  border-radius: 999px;
+  padding: 12px 30px;
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s, opacity 0.25s;
+}
+
+.loading__enter:hover:enabled {
+  background: #2b2926;
+  color: #efece6;
+}
+
+.loading__enter:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.loading__footer {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b0aaa0;
+}
+
+/* ---------- HUD ---------- */
+.nowplaying {
+  position: fixed;
+  left: 28px;
+  bottom: 24px;
+  z-index: 10;
+  color: #2b2926;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  pointer-events: none;
+}
+
+.nowplaying--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nowplaying__track {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.nowplaying__album {
+  font-size: 12px;
+  color: #8a857c;
+  margin-top: 3px;
+}
+
+.hint,
+.help {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  white-space: nowrap;
+}
+
+.hint {
+  top: 26px;
+  color: #a3552c;
+}
+
+.help {
+  bottom: 26px;
+  color: #8a857c;
+}
+
+.hint--visible,
+.help--visible {
+  opacity: 1;
+}
