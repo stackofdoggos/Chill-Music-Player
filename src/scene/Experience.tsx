@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
-import { useStore } from '../state/store'
+import { requestUnfocus } from '../state/store'
 import { engine } from '../audio/engine'
 import { STATIONS } from './layout'
 import { Lighting } from './Lighting'
@@ -21,7 +21,7 @@ export function Experience() {
       shadows
       dpr={[1, 2]}
       camera={{ fov: 40, position: STATIONS.overview.pos.toArray(), near: 0.05, far: 30 }}
-      onPointerMissed={() => useStore.getState().setView('overview')}
+      onPointerMissed={() => requestUnfocus()}
     >
       <color attach="background" args={['#e8e4dc']} />
       <Lighting />

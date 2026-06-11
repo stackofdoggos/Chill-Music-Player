@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
 import { easing } from 'maath'
-import { useStore } from '../../state/store'
+import { dragActiveOrRecent, markDragEnd, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
 import { BODY } from '../layout'
 
@@ -21,6 +21,7 @@ function PowerSwitch() {
 
   const toggle = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (dragActiveOrRecent()) return
     const s = useStore.getState()
     s.setPower(!s.power)
     engine.setPower(!power)
@@ -57,6 +58,7 @@ function SpeedKnob() {
 
   const toggle = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (dragActiveOrRecent()) return
     const s = useStore.getState()
     const next = s.speed === 33 ? 45 : 33
     s.setSpeed(next)
@@ -98,23 +100,59 @@ function SpeedKnob() {
   )
 }
 
+function applyVolume(v: number) {
+  const st = useStore.getState()
+  const clamped = THREE.MathUtils.clamp(v, 0, 1)
+  if (clamped === st.volume) return
+  st.setVolume(clamped)
+  engine.setVolume(clamped)
+}
+
 function VolumeKnob() {
   const volume = useStore((s) => s.volume)
+  const view = useStore((s) => s.view)
   const knob = useRef<THREE.Group>(null)
   const [hover, setHover] = useState(false)
   const drag = useRef<{ startY: number; startV: number; step: number } | null>(null)
+  const moved = useRef(false)
   useCursor(hover, drag.current ? 'grabbing' : 'grab')
+
+  // arrow keys adjust by one detent while in the volume close-up
+  useEffect(() => {
+    if (view !== 'volume') return
+    const onKey = (e: KeyboardEvent) => {
+      const dir =
+        e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -1 : 0
+      if (!dir) return
+      e.preventDefault()
+      const v = useStore.getState().volume + dir / 18
+      applyVolume(v)
+      engine.playSfx('knobTick', 0.5, 1 + v * 0.3)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [view])
+
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    if (moved.current) {
+      moved.current = false
+      return
+    }
+    if (dragActiveOrRecent()) return
+    if (useStore.getState().view !== 'volume') useStore.getState().setView('volume')
+  }
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
     const s = useStore.getState()
+    moved.current = false
     drag.current = { startY: e.clientY, startV: s.volume, step: Math.round(s.volume * 18) }
     const move = (ev: PointerEvent) => {
       if (!drag.current) return
+      if (Math.abs(ev.clientY - drag.current.startY) > 4) moved.current = true
       const v = THREE.MathUtils.clamp(drag.current.startV - (ev.clientY - drag.current.startY) * 0.004, 0, 1)
-      const st = useStore.getState()
-      st.setVolume(v)
-      engine.setVolume(v)
+      applyVolume(v)
       const step = Math.round(v * 18)
       if (step !== drag.current.step) {
         drag.current.step = step
@@ -123,6 +161,7 @@ function VolumeKnob() {
     }
     const up = () => {
       drag.current = null
+      if (moved.current) markDragEnd()
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
     }
@@ -137,6 +176,7 @@ function VolumeKnob() {
   return (
     <group
       position={[0.235, Y, FACE_Z]}
+      onClick={onClick}
       onPointerDown={onDown}
       onPointerOver={() => setHover(true)}
       onPointerOut={() => setHover(false)}

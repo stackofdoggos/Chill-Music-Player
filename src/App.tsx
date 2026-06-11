@@ -3,7 +3,7 @@ import { Experience } from './scene/Experience'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { NowPlaying } from './ui/NowPlaying'
 import { loadAlbums } from './albums'
-import { useStore } from './state/store'
+import { requestUnfocus, useStore } from './state/store'
 import { engine } from './audio/engine'
 
 export default function App() {
@@ -25,7 +25,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') useStore.getState().setView('overview')
+      if (e.key === 'Escape') requestUnfocus()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
-import { useStore, selectedAlbum, PHASE_DURATION } from '../state/store'
+import { useStore, selectedAlbum, dragActiveOrRecent, PHASE_DURATION } from '../state/store'
 import { engine } from '../audio/engine'
 import { Vinyl } from './Shelf/Vinyl'
 import { SLEEVE_OUT_POS, VINYL_REST, easeInOutCubic } from './layout'
@@ -87,6 +87,7 @@ export function RecordTransit() {
         album={album}
         onClick={(e) => {
           e.stopPropagation()
+          if (dragActiveOrRecent()) return
           if (clickable) {
             useStore.getState().returnRecord()
           } else if (phase === 'onPlatter') {

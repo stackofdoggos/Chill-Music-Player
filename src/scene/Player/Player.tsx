@@ -1,6 +1,6 @@
 import { RoundedBox } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
-import { useStore } from '../../state/store'
+import { dragActiveOrRecent, useStore } from '../../state/store'
 import { BODY, PLAYER_POS } from '../layout'
 import { Platter } from './Platter'
 import { Tonearm } from './Tonearm'
@@ -12,6 +12,7 @@ export function Player() {
 
   const focus = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (dragActiveOrRecent()) return
     setView('player')
   }
 

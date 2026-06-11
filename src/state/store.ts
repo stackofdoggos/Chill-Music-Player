@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Album } from '../albums'
 
-export type View = 'overview' | 'player' | 'shelf'
+export type View = 'overview' | 'player' | 'shelf' | 'volume' | 'arm'
 export type RecordPhase = 'none' | 'pullingOut' | 'out' | 'toPlatter' | 'onPlatter' | 'returning'
 export type NeedleState = 'rest' | 'down'
 
@@ -106,6 +106,41 @@ export const useStore = create<State>((set, get) => ({
 
 export function selectedAlbum(s: State): Album | null {
   return s.albums.find((a) => a.id === s.selectedAlbumId) ?? null
+}
+
+/** where clicking off / Esc leads from each view */
+const BACK: Record<View, View> = {
+  overview: 'overview',
+  shelf: 'overview',
+  player: 'overview',
+  volume: 'player',
+  arm: 'player',
+}
+
+let lastDragEnd = 0
+
+/** call when a knob/tonearm drag releases so the trailing click can't unfocus */
+export function markDragEnd() {
+  lastDragEnd = performance.now()
+}
+
+/**
+ * True while a knob/tonearm drag is active or ended <350ms ago. The browser
+ * fires a click after every drag release; guard any click handler that should
+ * not react to that trailing click (unfocus, power, lid, record return, ...).
+ */
+export function dragActiveOrRecent() {
+  return useStore.getState().draggingTonearm || performance.now() - lastDragEnd < 350
+}
+
+/**
+ * Step back one view level (click on walls/floor, pointer-miss, Esc).
+ * Ignored after drags, so a drag that finishes off the player never unfocuses it.
+ */
+export function requestUnfocus() {
+  if (dragActiveOrRecent()) return
+  const s = useStore.getState()
+  s.setView(BACK[s.view])
 }
 
 if (import.meta.env.DEV) {

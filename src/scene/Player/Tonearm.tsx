@@ -4,7 +4,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
 import { easing } from 'maath'
-import { useStore } from '../../state/store'
+import { dragActiveOrRecent, markDragEnd, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
 import {
   ARM,
@@ -33,14 +33,27 @@ export function Tonearm() {
   const cur = useRef({ yaw: ARM.yawRest, pitch: PITCH.rest })
   const dragYaw = useRef(ARM.yawRest)
   const [hover, setHover] = useState(false)
+  const [baseHover, setBaseHover] = useState(false)
   const dragging = useStore((s) => s.draggingTonearm)
-  useCursor(hover || dragging, dragging ? 'grabbing' : 'grab')
+  useCursor(dragging || hover || baseHover, dragging ? 'grabbing' : baseHover ? 'pointer' : 'grab')
+
+  // clicking the pivot toggles the top-down precision view
+  const toggleArmView = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    if (dragActiveOrRecent()) return
+    const s = useStore.getState()
+    s.setView(s.view === 'arm' ? 'player' : 'arm')
+  }
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     const s = useStore.getState()
     if (s.recordPhase !== 'onPlatter') return
     e.stopPropagation()
-    ;(e.target as Element).setPointerCapture(e.pointerId)
+    try {
+      ;(e.target as Element).setPointerCapture(e.pointerId)
+    } catch {
+      /* synthetic pointers can't always be captured */
+    }
     dragYaw.current = cur.current.yaw
     s.setDraggingTonearm(true)
     if (s.needle === 'down') {
@@ -63,7 +76,13 @@ export function Tonearm() {
     const s = useStore.getState()
     if (!s.draggingTonearm) return
     e.stopPropagation()
+    try {
+      ;(e.target as Element).releasePointerCapture(e.pointerId)
+    } catch {
+      /* capture may already be gone */
+    }
     s.setDraggingTonearm(false)
+    markDragEnd()
     const r = radiusAtYaw(dragYaw.current)
     if (s.recordPhase === 'onPlatter' && r <= GROOVE_OUT + 0.01 && r >= GROOVE_IN - 0.006) {
       s.setNeedle('down')
@@ -95,11 +114,25 @@ export function Tonearm() {
 
   return (
     <group position={ARM.pivotLocal.toArray()}>
-      {/* bearing base */}
-      <mesh position-y={-0.002} castShadow>
-        <cylinderGeometry args={[0.018, 0.021, 0.024, 32]} />
-        <meshStandardMaterial color="#b9b7b3" metalness={0.85} roughness={0.25} />
-      </mesh>
+      {/* bearing base + pivot column: clicking opens the top-down view */}
+      <group
+        onClick={toggleArmView}
+        onPointerDown={(e) => e.stopPropagation()} // keep the drag group beneath from grabbing
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setBaseHover(true)
+        }}
+        onPointerOut={() => setBaseHover(false)}
+      >
+        <mesh name="arm-base" position-y={-0.017} castShadow>
+          <cylinderGeometry args={[0.018, 0.022, 0.044, 32]} />
+          <meshStandardMaterial color="#b9b7b3" metalness={0.85} roughness={0.25} />
+        </mesh>
+        <mesh name="arm-pivot-column" position-y={0.011}>
+          <cylinderGeometry args={[0.007, 0.007, 0.026, 16]} />
+          <meshStandardMaterial color="#c9c7c3" metalness={0.85} roughness={0.25} />
+        </mesh>
+      </group>
 
       {/* rotating assembly; rotation order YXZ so pitch follows yaw */}
       <group ref={arm} rotation-order="YXZ">
@@ -130,25 +163,20 @@ export function Tonearm() {
             <cylinderGeometry args={[0.013, 0.013, 0.024, 24]} />
             <meshStandardMaterial color="#3a3a3c" metalness={0.8} roughness={0.35} />
           </mesh>
-          {/* pivot column */}
-          <mesh position-y={0.011}>
-            <cylinderGeometry args={[0.007, 0.007, 0.026, 16]} />
-            <meshStandardMaterial color="#c9c7c3" metalness={0.85} roughness={0.25} />
-          </mesh>
-          {/* invisible fat grab-helper along the tube */}
-          <mesh position={[0, 0.01, ARM.length / 2]} rotation-x={Math.PI / 2} visible={false}>
-            <cylinderGeometry args={[0.02, 0.02, ARM.length, 8]} />
+          {/* invisible fat grab-helper along the tube (starts past the pivot so base clicks get through) */}
+          <mesh position={[0, 0.01, 0.07 + (ARM.length - 0.07) / 2]} rotation-x={Math.PI / 2} visible={false}>
+            <cylinderGeometry args={[0.02, 0.02, ARM.length - 0.07, 8]} />
           </mesh>
         </group>
       </group>
 
       {/* armrest post (in player space, near the needle's rest point) */}
       <group position={[rest.x - ARM.pivotLocal.x, 0, rest.y - ARM.pivotLocal.z]}>
-        <mesh position-y={-0.006}>
-          <cylinderGeometry args={[0.004, 0.004, 0.018, 12]} />
+        <mesh position-y={-0.016}>
+          <cylinderGeometry args={[0.004, 0.004, 0.045, 12]} />
           <meshStandardMaterial color="#9a9894" metalness={0.7} roughness={0.4} />
         </mesh>
-        <mesh position-y={0.004}>
+        <mesh position-y={0.009}>
           <boxGeometry args={[0.012, 0.005, 0.018]} />
           <meshStandardMaterial color="#9a9894" metalness={0.7} roughness={0.4} />
         </mesh>

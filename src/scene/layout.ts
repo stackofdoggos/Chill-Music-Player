@@ -30,8 +30,10 @@ export const VINYL_REST = V3(
 )
 
 // ---------------- tonearm ----------------
+// pivot height is set so the stylus tip kisses the vinyl surface at PITCH.down
+// (vinyl top ≈ BODY.h + 0.0286; tip hangs 0.0065 below pivot, drops pitch*armLength)
 export const ARM = {
-  pivotLocal: V3(0.205, BODY.h + 0.012, -0.105),
+  pivotLocal: V3(0.205, BODY.h + 0.038, -0.105),
   length: 0.25,
   yawRest: -0.58,
 }
@@ -93,8 +95,21 @@ export const SLEEVE_OUT_ROT_Y = -Math.PI / 2 // front cover (+x face) turns to +
 // ---------------- camera stations ----------------
 export const STATIONS: Record<View, { pos: THREE.Vector3; target: THREE.Vector3 }> = {
   overview: { pos: V3(0.45, 1.4, 2.1), target: V3(0.3, 1.02, -2.0) },
-  player: { pos: V3(-0.86, 1.32, -0.62), target: V3(-0.9, 0.8, -1.78) },
+  player: { pos: V3(-0.86, 1.46, -0.58), target: V3(-0.9, 0.84, -1.78) },
   shelf: { pos: V3(1.16, 1.34, -0.78), target: V3(1.18, 1.24, -2.05) },
+  // close-up on the volume knob (front face of the chassis)
+  volume: { pos: V3(-0.665, 0.875, -1.31), target: V3(-0.665, 0.797, -1.58) },
+  // almost straight above the deck, for precise tonearm placement
+  arm: { pos: V3(-0.86, 1.78, -1.6), target: V3(-0.9, 0.86, -1.78) },
+}
+
+/** mouse-parallax amplitude per view (position, target) */
+export const PARALLAX: Record<View, [number, number]> = {
+  overview: [0.07, 0.015],
+  player: [0.07, 0.015],
+  shelf: [0.07, 0.015],
+  volume: [0.012, 0.003],
+  arm: [0.03, 0.006],
 }
 
 export function easeInOutCubic(t: number): number {

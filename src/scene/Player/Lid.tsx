@@ -4,7 +4,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
 import { easing } from 'maath'
-import { useStore } from '../../state/store'
+import { dragActiveOrRecent, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
 import { BODY } from '../layout'
 
@@ -27,6 +27,7 @@ export function Lid() {
 
   const toggle = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (dragActiveOrRecent()) return
     const s = useStore.getState()
     s.setLid(!s.lidOpen)
     engine.playSfx('lid', 0.7, s.lidOpen ? 0.9 : 1.05)

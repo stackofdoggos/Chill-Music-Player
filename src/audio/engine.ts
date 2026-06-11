@@ -28,6 +28,7 @@ class AudioEngine {
   private durations: number[] = []
   private trackIndex = -1
   private dropTimer: ReturnType<typeof setTimeout> | undefined
+  private metaHandler: (() => void) | null = null
 
   needleDown = false
   powered = false
@@ -136,6 +137,7 @@ class AudioEngine {
     this.restProgress = this.getProgress()
     this.needleDown = false
     clearTimeout(this.dropTimer)
+    this.clearMetaHandler()
     if (!silent) this.playSfx('needleLift', 0.6)
     if (this.ctx) this.rampGain(this.crackleGain, 0, 0.2)
     this.el?.pause()
@@ -156,11 +158,32 @@ class AudioEngine {
 
   private playTrack(i: number, offset: number) {
     if (!this.album || !this.el) return
+    const el = this.el
+    this.clearMetaHandler()
     this.trackIndex = i
-    this.el.src = trackUrl(this.album, i)
-    this.el.currentTime = offset
-    void this.el.play().catch(() => {})
+    el.src = trackUrl(this.album, i)
+    // seek only once metadata is in: seeking a fresh element is unreliable, and
+    // manifest durations (iTunes) can exceed the actual audio we downloaded
+    const onMeta = () => {
+      this.metaHandler = null
+      if (!this.needleDown) return
+      if (Number.isFinite(el.duration) && el.duration > 0) {
+        this.durations[i] = el.duration
+        el.currentTime = Math.min(Math.max(offset, 0), Math.max(0, el.duration - 0.75))
+      }
+      void el.play().catch(() => {})
+    }
+    this.metaHandler = onMeta
+    el.addEventListener('loadedmetadata', onMeta, { once: true })
+    el.load()
     useStore.getState().setNowPlayingTrack(i)
+  }
+
+  private clearMetaHandler() {
+    if (this.metaHandler && this.el) {
+      this.el.removeEventListener('loadedmetadata', this.metaHandler)
+      this.metaHandler = null
+    }
   }
 
   private onTrackEnded() {
@@ -180,6 +203,7 @@ class AudioEngine {
 
   private stopMusic() {
     clearTimeout(this.dropTimer)
+    this.clearMetaHandler()
     this.needleDown = false
     this.el?.pause()
     if (this.ctx) this.rampGain(this.crackleGain, 0, 0.1)

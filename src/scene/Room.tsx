@@ -1,17 +1,16 @@
 import { useMemo } from 'react'
 import { ContactShadows } from '@react-three/drei'
-import { useStore } from '../state/store'
+import { requestUnfocus } from '../state/store'
 import { woodTexture } from './textures'
 import { DESK, ROOM } from './layout'
 
 export function Room() {
-  const setView = useStore((s) => s.setView)
   const floorTex = useMemo(() => woodTexture(5, 5, true), [])
   const deskTex = useMemo(() => woodTexture(2, 1), [])
 
   const toOverview = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
-    setView('overview')
+    requestUnfocus()
   }
 
   return (

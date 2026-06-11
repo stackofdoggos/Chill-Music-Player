@@ -16,17 +16,19 @@ export function NowPlaying() {
   }, [hint, setHint])
 
   const track = album && trackIndex >= 0 ? album.tracks[trackIndex] : null
+  const power = useStore((s) => s.power)
+  const needle = useStore((s) => s.needle)
 
-  const help =
-    view === 'overview'
-      ? 'Click the shelf to browse records'
-      : view === 'shelf' && phase === 'none'
-        ? 'Click a spine to pull a record out'
-        : view === 'shelf' && phase === 'out'
-          ? 'Click the sleeve again to put it on'
-          : view === 'player' && phase === 'onPlatter' && !track
-            ? 'Switch the power on, then drag the tonearm onto the record'
-            : null
+  let help: string | null = null
+  if (view === 'overview') help = 'Click the shelf to browse records'
+  else if (view === 'shelf' && phase === 'none') help = 'Click a spine to pull a record out'
+  else if (view === 'shelf' && phase === 'out') help = 'Click the sleeve again to put it on'
+  else if (view === 'volume') help = 'Drag the knob or use the arrow keys — click away to go back'
+  else if (view === 'arm') help = 'Drag the arm over the record and let go — click the base to go back'
+  else if (view === 'player' && phase === 'onPlatter' && needle === 'down' && !power)
+    help = 'Flick the power switch to spin the platter'
+  else if (view === 'player' && phase === 'onPlatter' && !track)
+    help = 'Switch the power on, then drag the tonearm onto the record'
 
   return (
     <>
