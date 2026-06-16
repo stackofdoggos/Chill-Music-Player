@@ -174,6 +174,71 @@
           "durationMs": 155264
         }
       ]
+    },
+    {
+      "id": "bach-essentials",
+      "artist": "Johann Sebastian Bach",
+      "title": "Bach Essentials",
+      "year": "1720",
+      "accent": "#d4a017",
+      "cover": "/albums/bach-essentials/cover.jpg",
+      "tracks": [
+        {
+          "file": "01.m4a",
+          "name": "Jesu, Joy of Man’s Desiring",
+          "durationMs": 173061
+        },
+        {
+          "file": "02.m4a",
+          "name": "Cello Suite No. 1 — Prelude",
+          "durationMs": 203981
+        },
+        {
+          "file": "03.m4a",
+          "name": "Partita No. 2 — Chaconne",
+          "durationMs": 240000
+        },
+        {
+          "file": "04.m4a",
+          "name": "Toccata in D Minor",
+          "durationMs": 172970
+        },
+        {
+          "file": "05.m4a",
+          "name": "Fantasia in C Minor BWV 537",
+          "durationMs": 272313
+        },
+        {
+          "file": "06.m4a",
+          "name": "Fugue in C Minor BWV 537",
+          "durationMs": 239804
+        },
+        {
+          "file": "07.m4a",
+          "name": "Orchestral Suite No. 3 — Air",
+          "durationMs": 449018
+        }
+      ]
+    },
+    {
+      "id": "debussy-impressions",
+      "artist": "Claude Debussy",
+      "title": "Impressions",
+      "year": "1890",
+      "accent": "#5a6b8a",
+      "cover": "/albums/debussy-impressions/cover.jpg",
+      "tracks": [
+        {
+          "file": "01.m4a",
+          "name": "Clair de lune",
+          "durationMs": 33000
+        },
+        {
+          "file": "02.m4a",
+          "name": "Prélude à l’après-midi d’un faune",
+          "durationMs": 240000
+        }
+      ]
     }
   ]
 }
