@@ -64,7 +64,7 @@ Typical test flow (wait ~2s between steps for camera/phase animations):
 
 ```js
 // audio requires a user gesture: click the "Enter — sound on" button first (it has an a11y ref)
-p = __proj(0.96, 1.33, -1.835); __click(...p)          // click first spine (walks to shelf, then selects)
+p = __proj(0.71, 1.33, -1.835); __click(...p)          // click first spine (walks to shelf, then selects)
 p = __proj(...SLEEVE_OUT_POS); __click(...p)            // place record (see layout.ts for current value)
 p = __proj(-0.81, 0.7975, -1.58); __click(...p)         // power switch
 g = __proj(-0.7635, 0.9, -1.7605); d = __proj(-0.88, 0.9, -1.64); await __drag(...g, ...d) // drop needle
