@@ -25,6 +25,9 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `scripts/fetch-albums.mjs` | yt-dlp + iTunes pipeline that builds `public/albums/` + `manifest.json`. |
 
 State machine: `recordPhase`: `none → pullingOut → out → toPlatter → onPlatter → returning → none`.
+`selectedAlbumId` is the sleeve pulled out for browsing; `platterAlbumId` is what's on the
+turntable (can differ while browsing the shelf during playback). Each manifest track expands
+to its own shelf vinyl at load time (`sourceId` points at the on-disk album folder).
 Views: `overview | shelf | player | volume (knob close-up) | arm (top-down tonearm)`.
 Unfocus order: `volume/arm → player`, `player/shelf → overview` (see `BACK` in store).
 Entering the precision views: click the volume knob → `volume` (drag or arrow keys adjust);

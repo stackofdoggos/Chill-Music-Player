@@ -14,7 +14,10 @@ export const PHASE_DURATION: Record<string, number> = {
 interface State {
   albums: Album[]
   view: View
+  /** sleeve pulled out on the shelf (browsing) */
   selectedAlbumId: string | null
+  /** album currently on the turntable */
+  platterAlbumId: string | null
   recordPhase: RecordPhase
   phaseStart: number
   power: boolean
@@ -52,6 +55,7 @@ export const useStore = create<State>((set, get) => ({
   albums: [],
   view: 'overview',
   selectedAlbumId: null,
+  platterAlbumId: null,
   recordPhase: 'none',
   phaseStart: 0,
   power: false,
@@ -68,18 +72,26 @@ export const useStore = create<State>((set, get) => ({
 
   selectAlbum: (id) => {
     const { recordPhase, selectedAlbumId } = get()
-    if (recordPhase === 'toPlatter' || recordPhase === 'onPlatter' || recordPhase === 'returning') {
-      set({ hint: 'Return the record on the platter first' })
-      return
-    }
+    if (recordPhase === 'toPlatter' || recordPhase === 'returning') return
     if (selectedAlbumId === id && recordPhase === 'out') return
     set({ selectedAlbumId: id, recordPhase: 'pullingOut', phaseStart: performance.now(), hint: null })
     schedulePhase(set, 'out', PHASE_DURATION.pullingOut)
   },
 
   placeRecord: () => {
-    if (get().recordPhase !== 'out') return
-    set({ recordPhase: 'toPlatter', phaseStart: performance.now(), view: 'player' })
+    const s = get()
+    if (s.recordPhase !== 'out') return
+    if (s.platterAlbumId) {
+      set({ hint: 'Return the record on the platter first' })
+      return
+    }
+    if (!s.selectedAlbumId) return
+    set({
+      platterAlbumId: s.selectedAlbumId,
+      recordPhase: 'toPlatter',
+      phaseStart: performance.now(),
+      view: 'player',
+    })
     schedulePhase(set, 'onPlatter', PHASE_DURATION.toPlatter)
   },
 
@@ -89,7 +101,13 @@ export const useStore = create<State>((set, get) => ({
     set({ recordPhase: 'returning', phaseStart: performance.now(), view: 'shelf', nowPlayingTrack: -1 })
     clearTimeout(phaseTimer)
     phaseTimer = setTimeout(
-      () => set({ recordPhase: 'none', selectedAlbumId: null, phaseStart: performance.now() }),
+      () =>
+        set({
+          recordPhase: 'none',
+          selectedAlbumId: null,
+          platterAlbumId: null,
+          phaseStart: performance.now(),
+        }),
       PHASE_DURATION.returning * 1000,
     )
   },
@@ -106,6 +124,20 @@ export const useStore = create<State>((set, get) => ({
 
 export function selectedAlbum(s: State): Album | null {
   return s.albums.find((a) => a.id === s.selectedAlbumId) ?? null
+}
+
+export function platterAlbum(s: State): Album | null {
+  return s.albums.find((a) => a.id === s.platterAlbumId) ?? null
+}
+
+let lastSleeveDragEnd = 0
+
+export function markSleeveDragEnd() {
+  lastSleeveDragEnd = performance.now()
+}
+
+export function sleeveDragActiveOrRecent() {
+  return performance.now() - lastSleeveDragEnd < 350
 }
 
 /** where clicking off / Esc leads from each view */

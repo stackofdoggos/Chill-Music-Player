@@ -95,11 +95,39 @@ export const SHELF = {
 
 export const SLEEVE = { size: 0.315, thickness: 0.0145 };
 
+/** spines per shelf tier before wrapping to the next row */
+export const SLOTS_PER_ROW = 4;
+const ROW_SHELF_Y = [1, 2, 0] as const; // middle, top, bottom
+const ROW_START_X = 0.62;
+const SLOT_PITCH = SLEEVE.thickness + 0.004;
+
+export function sleeveRowCol(i: number): { row: number; col: number } {
+  return { row: Math.floor(i / SLOTS_PER_ROW), col: i % SLOTS_PER_ROW };
+}
+
 export function sleeveSlot(i: number): THREE.Vector3 {
+  const { row, col } = sleeveRowCol(i);
+  const shelfIdx = ROW_SHELF_Y[row % ROW_SHELF_Y.length];
+  const tier = Math.floor(row / ROW_SHELF_Y.length);
   return V3(
-    0.71 + i * (SLEEVE.thickness + 0.004),
-    SHELF.shelfY[1] + 0.009 + SLEEVE.size / 2,
-    -1.99,
+    ROW_START_X + col * SLOT_PITCH,
+    SHELF.shelfY[shelfIdx] + 0.009 + SLEEVE.size / 2,
+    -1.99 - tier * 0.028,
+  );
+}
+
+/** bookend at the end of a populated shelf row */
+export function bookendPos(lastIndexInRow: number): THREE.Vector3 {
+  const slot = sleeveSlot(lastIndexInRow);
+  const { row } = sleeveRowCol(lastIndexInRow);
+  const shelfIdx = ROW_SHELF_Y[row % ROW_SHELF_Y.length];
+  const shelfTop = SHELF.shelfY[shelfIdx] + 0.009;
+  const plateH = 0.16;
+  const plateW = 0.006;
+  return V3(
+    slot.x + SLEEVE.thickness / 2 + plateW / 2 + 0.004,
+    shelfTop + plateH / 2,
+    slot.z,
   );
 }
 

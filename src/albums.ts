@@ -12,6 +12,8 @@ export interface Album {
   accent: string
   cover: string | null
   tracks: Track[]
+  /** disk folder when id differs (one vinyl per track from a shared album folder) */
+  sourceId?: string
   /** preloaded cover image, null when no artwork (placeholder albums) */
   coverImg: HTMLImageElement | null
 }
@@ -36,12 +38,35 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   })
 }
 
+/** One shelf vinyl per track so each album folder's music is fully represented. */
+function expandTrackVinyls(raw: Omit<Album, 'coverImg'>[]): Omit<Album, 'coverImg'>[] {
+  const out: Omit<Album, 'coverImg'>[] = []
+  for (const album of raw) {
+    if (!album.tracks.length) {
+      out.push(album)
+      continue
+    }
+    for (let i = 0; i < album.tracks.length; i++) {
+      const track = album.tracks[i]
+      const n = String(i + 1).padStart(2, '0')
+      out.push({
+        ...album,
+        id: album.tracks.length === 1 ? album.id : `${album.id}--${n}`,
+        sourceId: album.tracks.length === 1 ? undefined : album.id,
+        title: album.tracks.length === 1 ? album.title : track.name,
+        tracks: [track],
+      })
+    }
+  }
+  return out
+}
+
 export async function loadAlbums(onProgress: (done: number, total: number) => void): Promise<Album[]> {
   let raw: Omit<Album, 'coverImg'>[]
   try {
     const res = await fetch('/albums/manifest.json', { cache: 'no-store' })
     const json = await res.json()
-    raw = json.albums?.length ? json.albums : PLACEHOLDERS
+    raw = json.albums?.length ? expandTrackVinyls(json.albums) : PLACEHOLDERS
   } catch {
     raw = PLACEHOLDERS
   }
@@ -57,5 +82,6 @@ export async function loadAlbums(onProgress: (done: number, total: number) => vo
 }
 
 export function trackUrl(album: Album, index: number): string {
-  return `/albums/${album.id}/${album.tracks[index].file}`
+  const folder = album.sourceId ?? album.id
+  return `/albums/${folder}/${album.tracks[index].file}`
 }

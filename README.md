@@ -8,6 +8,8 @@ power switch, and drop the needle. Built with React Three Fiber.
 
 - **Overview** — click the shelf or the player to walk over. `Esc` or clicking the room steps back.
 - **Shelf** — click a spine to slide the sleeve out; click the sleeve again to put the record on.
+  While a record is playing you can still walk to the shelf and pull other sleeves to browse.
+  Drag a pulled-out sleeve **left ↔ right** to flip it and read the track list on the back.
 - **Player** — flick the power switch (the platter spins up with a pitch bend), then **drag the
   tonearm** onto the record. Where you drop it is where it plays: outer edge is track 1, inner
   grooves are the end of the album. Drag the arm while playing to seek.
