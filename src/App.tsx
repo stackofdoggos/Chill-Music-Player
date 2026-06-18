@@ -26,6 +26,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') requestUnfocus()
+      else if (e.key === 'f' || e.key === 'F') useStore.getState().flipSleeve()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

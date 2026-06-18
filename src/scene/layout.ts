@@ -115,7 +115,7 @@ export const STATIONS: Record<
   // zoomed to feel close while the desk legs stay at the bottom of frame
   overview: { pos: V3(0.25, 1.36, 1.55), target: V3(0.1, 0.98, -2.0) },
   player: { pos: V3(-0.86, 1.46, -0.58), target: V3(-0.9, 0.84, -1.78) },
-  shelf: { pos: V3(0.91, 1.34, -0.78), target: V3(0.93, 1.24, -2.05) },
+  shelf: { pos: V3(0.78, 1.36, -0.85), target: V3(0.78, 1.3, -2.05) },
   // close-up on the volume knob (front face of the chassis)
   volume: { pos: V3(-0.665, 0.875, -1.31), target: V3(-0.665, 0.797, -1.58) },
   // almost straight above the deck, for precise tonearm placement

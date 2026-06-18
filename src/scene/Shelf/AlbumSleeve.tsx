@@ -1,24 +1,31 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
 import { easing } from 'maath'
 import type { Album } from '../../albums'
-import { useStore } from '../../state/store'
+import { dragActiveOrRecent, markDragEnd, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
 import { sleeveTextures } from '../textures'
 import { SLEEVE, SLEEVE_OUT_POS, SLEEVE_OUT_ROT_Y, sleeveSlot } from '../layout'
 
-const tmpRot = new THREE.Euler()
+const FLIP_DRAG_PX = 180
 
 export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
-  const group = useRef<THREE.Group>(null)
+  const outer = useRef<THREE.Group>(null)
+  const pose = useRef<THREE.Group>(null)
+  const hinge = useRef<THREE.Group>(null)
   const slot = useMemo(() => sleeveSlot(index), [index])
   const [hover, setHover] = useState(false)
   const selected = useStore((s) => s.selectedAlbumId === album.id)
   const phase = useStore((s) => s.recordPhase)
-  useCursor(hover)
+  const sleeveSide = useStore((s) => s.sleeveSide)
+  const draggingSleeve = useStore((s) => s.draggingSleeve)
+  const flip = useRef(0)
+  const moved = useRef(false)
+  const canFlip = selected && phase === 'out'
+  useCursor(hover && canFlip, canFlip && draggingSleeve ? 'grabbing' : 'grab')
 
   const materials = useMemo(() => {
     const t = sleeveTextures(album)
@@ -29,8 +36,17 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
 
   const isOut = selected && (phase === 'pullingOut' || phase === 'out' || phase === 'returning')
 
+  useEffect(() => {
+    if (!canFlip) flip.current = 0
+  }, [canFlip])
+
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (moved.current) {
+      moved.current = false
+      return
+    }
+    if (dragActiveOrRecent()) return
     const s = useStore.getState()
     if (s.view !== 'shelf' && !isOut) {
       s.setView('shelf')
@@ -48,37 +64,95 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
     }
   }
 
+  const onFlipDown = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation()
+    moved.current = false
+    const startX = e.clientX
+    const startFlip = flip.current
+    let dragging = false
+
+    const onMove = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientX - startX) <= 4) return
+      if (!dragging) {
+        dragging = true
+        moved.current = true
+        useStore.getState().setDraggingSleeve(true)
+        try {
+          ;(e.target as Element).setPointerCapture(ev.pointerId)
+        } catch {
+          /* synthetic pointers can't always be captured */
+        }
+      }
+      flip.current = THREE.MathUtils.clamp(
+        startFlip + ((ev.clientX - startX) / FLIP_DRAG_PX) * Math.PI,
+        0,
+        Math.PI,
+      )
+    }
+
+    const onUp = (ev: PointerEvent) => {
+      if (dragging) {
+        try {
+          ;(e.target as Element).releasePointerCapture(ev.pointerId)
+        } catch {
+          /* capture may already be gone */
+        }
+        markDragEnd()
+        useStore.getState().setDraggingSleeve(false)
+        const back = flip.current > Math.PI / 2
+        useStore.getState().setSleeveSide(back ? 'back' : 'front')
+        flip.current = back ? Math.PI : 0
+      }
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp, true)
+      window.removeEventListener('pointercancel', onUp, true)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, true)
+    window.addEventListener('pointercancel', onUp, true)
+  }
+
   useFrame((_, dt) => {
-    if (!group.current) return
+    if (!outer.current || !pose.current || !hinge.current) return
     if (isOut) {
-      easing.damp3(group.current.position, SLEEVE_OUT_POS, 0.28, dt)
-      tmpRot.set(0, SLEEVE_OUT_ROT_Y, 0)
+      easing.damp3(outer.current.position, SLEEVE_OUT_POS, 0.28, dt)
+      pose.current.rotation.y = SLEEVE_OUT_ROT_Y
     } else {
       easing.damp3(
-        group.current.position,
+        outer.current.position,
         [slot.x, slot.y, slot.z + (hover && !selected ? 0.028 : 0)],
         0.22,
         dt,
       )
-      tmpRot.set(0, 0, 0)
+      pose.current.rotation.y = 0
     }
-    easing.dampE(group.current.rotation, tmpRot, 0.28, dt)
+
+    const goal = canFlip ? (sleeveSide === 'back' ? Math.PI : 0) : 0
+    const liveDrag = canFlip && draggingSleeve
+    if (!liveDrag) easing.damp(flip, 'current', goal, 0.22, dt)
+    hinge.current.rotation.y = flip.current
   })
 
   return (
-    <group ref={group} position={slot.toArray()}>
-      <mesh
-        material={materials}
-        castShadow
-        onClick={onClick}
-        onPointerOver={(e) => {
-          e.stopPropagation()
-          setHover(true)
-        }}
-        onPointerOut={() => setHover(false)}
-      >
-        <boxGeometry args={[SLEEVE.thickness, SLEEVE.size, SLEEVE.size]} />
-      </mesh>
+    <group ref={outer} position={slot.toArray()}>
+      <group ref={pose}>
+        <group ref={hinge}>
+          <mesh
+            material={materials}
+            castShadow
+            onClick={onClick}
+            onPointerDown={canFlip ? onFlipDown : undefined}
+            onPointerOver={(e) => {
+              e.stopPropagation()
+              setHover(true)
+            }}
+            onPointerOut={() => setHover(false)}
+          >
+            <boxGeometry args={[SLEEVE.thickness, SLEEVE.size, SLEEVE.size]} />
+          </mesh>
+        </group>
+      </group>
     </group>
   )
 }

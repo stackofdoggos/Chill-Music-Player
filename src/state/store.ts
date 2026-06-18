@@ -22,6 +22,8 @@ interface State {
   speed: 33 | 45
   needle: NeedleState
   draggingTonearm: boolean
+  draggingSleeve: boolean
+  sleeveSide: 'front' | 'back'
   nowPlayingTrack: number
   hint: string | null
   lidOpen: boolean
@@ -36,6 +38,9 @@ interface State {
   setSpeed: (s: 33 | 45) => void
   setNeedle: (n: NeedleState) => void
   setDraggingTonearm: (d: boolean) => void
+  setDraggingSleeve: (d: boolean) => void
+  setSleeveSide: (side: 'front' | 'back') => void
+  flipSleeve: () => void
   setNowPlayingTrack: (i: number) => void
   setHint: (h: string | null) => void
   setLid: (open: boolean) => void
@@ -59,6 +64,8 @@ export const useStore = create<State>((set, get) => ({
   speed: 33,
   needle: 'rest',
   draggingTonearm: false,
+  draggingSleeve: false,
+  sleeveSide: 'front',
   nowPlayingTrack: -1,
   hint: null,
   lidOpen: false,
@@ -73,13 +80,13 @@ export const useStore = create<State>((set, get) => ({
       return
     }
     if (selectedAlbumId === id && recordPhase === 'out') return
-    set({ selectedAlbumId: id, recordPhase: 'pullingOut', phaseStart: performance.now(), hint: null })
+    set({ selectedAlbumId: id, recordPhase: 'pullingOut', phaseStart: performance.now(), hint: null, sleeveSide: 'front' })
     schedulePhase(set, 'out', PHASE_DURATION.pullingOut)
   },
 
   placeRecord: () => {
     if (get().recordPhase !== 'out') return
-    set({ recordPhase: 'toPlatter', phaseStart: performance.now(), view: 'player' })
+    set({ recordPhase: 'toPlatter', phaseStart: performance.now(), view: 'player', sleeveSide: 'front' })
     schedulePhase(set, 'onPlatter', PHASE_DURATION.toPlatter)
   },
 
@@ -89,7 +96,7 @@ export const useStore = create<State>((set, get) => ({
     set({ recordPhase: 'returning', phaseStart: performance.now(), view: 'shelf', nowPlayingTrack: -1 })
     clearTimeout(phaseTimer)
     phaseTimer = setTimeout(
-      () => set({ recordPhase: 'none', selectedAlbumId: null, phaseStart: performance.now() }),
+      () => set({ recordPhase: 'none', selectedAlbumId: null, phaseStart: performance.now(), sleeveSide: 'front' }),
       PHASE_DURATION.returning * 1000,
     )
   },
@@ -99,6 +106,13 @@ export const useStore = create<State>((set, get) => ({
   setSpeed: (speed) => set({ speed }),
   setNeedle: (needle) => set({ needle }),
   setDraggingTonearm: (draggingTonearm) => set({ draggingTonearm }),
+  setDraggingSleeve: (draggingSleeve) => set({ draggingSleeve }),
+  setSleeveSide: (sleeveSide) => set({ sleeveSide }),
+  flipSleeve: () => {
+    const { view, recordPhase, sleeveSide, draggingSleeve } = get()
+    if (view !== 'shelf' || recordPhase !== 'out' || draggingSleeve) return
+    set({ sleeveSide: sleeveSide === 'front' ? 'back' : 'front' })
+  },
   setNowPlayingTrack: (nowPlayingTrack) => set({ nowPlayingTrack }),
   setHint: (hint) => set({ hint }),
   setLid: (lidOpen) => set({ lidOpen }),
@@ -119,23 +133,24 @@ const BACK: Record<View, View> = {
 
 let lastDragEnd = 0
 
-/** call when a knob/tonearm drag releases so the trailing click can't unfocus */
+/** call when a knob/tonearm/sleeve drag releases so the trailing click can't unfocus */
 export function markDragEnd() {
   lastDragEnd = performance.now()
 }
 
 /**
- * True while a knob/tonearm drag is active or ended <350ms ago. The browser
+ * True while a knob/tonearm/sleeve drag is active or ended <350ms ago. The browser
  * fires a click after every drag release; guard any click handler that should
  * not react to that trailing click (unfocus, power, lid, record return, ...).
  */
 export function dragActiveOrRecent() {
-  return useStore.getState().draggingTonearm || performance.now() - lastDragEnd < 350
+  const s = useStore.getState()
+  return s.draggingTonearm || s.draggingSleeve || performance.now() - lastDragEnd < 350
 }
 
 /**
  * Step back one view level (click on walls/floor, pointer-miss, Esc).
- * Ignored after drags, so a drag that finishes off the player never unfocuses it.
+ * Ignored after drags, so a drag that finishes off the player/sleeve never unfocuses it.
  */
 export function requestUnfocus() {
   if (dragActiveOrRecent()) return
