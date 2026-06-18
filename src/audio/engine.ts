@@ -29,8 +29,11 @@ class AudioEngine {
   private trackIndex = -1
   private dropTimer: ReturnType<typeof setTimeout> | undefined
   private metaHandler: (() => void) | null = null
+  private durationProbes: HTMLAudioElement[] = []
 
   needleDown = false
+  /** set once a drop/re-seek has loaded the target track and applied currentTime */
+  seekReady = false
   powered = false
   rate = 0
   /** accumulated platter rotation in radians, read by the scene every frame */
@@ -111,10 +114,46 @@ class AudioEngine {
 
   loadAlbum(album: Album | null) {
     this.stopMusic()
+    this.clearDurationProbes()
     this.album = album
     this.trackIndex = -1
     this.restProgress = 0
     this.durations = album ? album.tracks.map((t) => (t.durationMs || 240000) / 1000) : []
+    if (album) this.probeDurations(album)
+  }
+
+  private clearDurationProbes() {
+    for (const probe of this.durationProbes) {
+      probe.src = ''
+    }
+    this.durationProbes = []
+  }
+
+  /** read real file lengths so groove position maps to the right track */
+  private probeDurations(album: Album) {
+    album.tracks.forEach((_, i) => {
+      const probe = new Audio()
+      probe.preload = 'metadata'
+      probe.src = trackUrl(album, i)
+      const onMeta = () => {
+        if (Number.isFinite(probe.duration) && probe.duration > 0) this.durations[i] = probe.duration
+      }
+      probe.addEventListener('loadedmetadata', onMeta, { once: true })
+      this.durationProbes.push(probe)
+    })
+  }
+
+  private resolveProgress(p: number): { track: number; offset: number } {
+    const total = this.totalDuration()
+    if (total <= 0) return { track: 0, offset: 0 }
+    let seconds = Math.min(Math.max(p, 0), 1) * total
+    for (let i = 0; i < this.durations.length; i++) {
+      const d = this.durations[i]
+      if (i === this.durations.length - 1) return { track: i, offset: Math.min(seconds, d) }
+      if (seconds < d) return { track: i, offset: seconds }
+      seconds -= d
+    }
+    return { track: this.durations.length - 1, offset: 0 }
   }
 
   totalDuration() {
@@ -125,17 +164,19 @@ class AudioEngine {
   dropNeedle(p: number) {
     if (!this.ctx) return
     this.needleDown = true
+    this.seekReady = false
     this.restProgress = p
     this.playSfx('needleDrop', 0.8)
     this.rampGain(this.crackleGain, this.crackleLevel(), 0.15)
     clearTimeout(this.dropTimer)
-    this.dropTimer = setTimeout(() => this.startMusicAt(p), 550)
+    this.startMusicAt(p)
   }
 
   liftNeedle(silent = false) {
     if (!this.needleDown) return
     this.restProgress = this.getProgress()
     this.needleDown = false
+    this.seekReady = false
     clearTimeout(this.dropTimer)
     this.clearMetaHandler()
     if (!silent) this.playSfx('needleLift', 0.6)
@@ -146,37 +187,73 @@ class AudioEngine {
 
   private startMusicAt(p: number) {
     if (!this.album || !this.el || this.album.tracks.length === 0 || !this.needleDown) return
-    const total = this.totalDuration()
-    let target = p * total
-    let i = 0
-    while (i < this.durations.length - 1 && target > this.durations[i]) {
-      target -= this.durations[i]
-      i++
+    this.restProgress = p
+    const { track, offset } = this.resolveProgress(p)
+    const url = trackUrl(this.album, track)
+    if (this.trackIndex === track && this.el.src.endsWith(url)) {
+      this.seekTrack(track, offset)
+      return
     }
-    this.playTrack(i, target)
+    this.playTrack(track, offset)
+  }
+
+  private seekTrack(i: number, offset: number) {
+    if (!this.el || !this.needleDown) return
+    const el = this.el
+    this.trackIndex = i
+    const apply = () => {
+      if (!this.needleDown) return
+      if (Number.isFinite(el.duration) && el.duration > 0) {
+        this.durations[i] = el.duration
+        el.currentTime = Math.min(Math.max(offset, 0), Math.max(0, el.duration - 0.75))
+        this.seekReady = true
+      }
+      useStore.getState().setNowPlayingTrack(i)
+      if (this.powered) void el.play().catch(() => {})
+    }
+    if (Number.isFinite(el.duration) && el.duration > 0) {
+      apply()
+    } else {
+      const onMeta = () => {
+        this.metaHandler = null
+        apply()
+      }
+      this.clearMetaHandler()
+      this.metaHandler = onMeta
+      el.addEventListener('loadedmetadata', onMeta, { once: true })
+    }
   }
 
   private playTrack(i: number, offset: number) {
     if (!this.album || !this.el) return
     const el = this.el
+    const url = trackUrl(this.album, i)
+    if (this.trackIndex === i && el.src.endsWith(url) && Number.isFinite(el.duration) && el.duration > 0) {
+      this.seekTrack(i, offset)
+      return
+    }
+    el.pause()
     this.clearMetaHandler()
     this.trackIndex = i
-    el.src = trackUrl(this.album, i)
-    // seek only once metadata is in: seeking a fresh element is unreliable, and
-    // manifest durations (iTunes) can exceed the actual audio we downloaded
-    const onMeta = () => {
-      this.metaHandler = null
+    this.seekReady = false
+    const apply = () => {
       if (!this.needleDown) return
       if (Number.isFinite(el.duration) && el.duration > 0) {
         this.durations[i] = el.duration
         el.currentTime = Math.min(Math.max(offset, 0), Math.max(0, el.duration - 0.75))
+        this.seekReady = true
+        useStore.getState().setNowPlayingTrack(i)
+        void el.play().catch(() => {})
       }
-      void el.play().catch(() => {})
+    }
+    el.src = url
+    const onMeta = () => {
+      this.metaHandler = null
+      apply()
     }
     this.metaHandler = onMeta
     el.addEventListener('loadedmetadata', onMeta, { once: true })
     el.load()
-    useStore.getState().setNowPlayingTrack(i)
   }
 
   private clearMetaHandler() {
@@ -204,7 +281,9 @@ class AudioEngine {
   private stopMusic() {
     clearTimeout(this.dropTimer)
     this.clearMetaHandler()
+    this.clearDurationProbes()
     this.needleDown = false
+    this.seekReady = false
     this.el?.pause()
     if (this.ctx) this.rampGain(this.crackleGain, 0, 0.1)
   }
