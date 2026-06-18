@@ -70,6 +70,15 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') requestUnfocus()
       else if (e.key === 'f' || e.key === 'F') useStore.getState().flipSleeve()
+      else if (e.key === 'p' || e.key === 'P') {
+        const action = useStore.getState().pressP()
+        if (action === 'putBack') engine.playSfx('sleeveIn', 0.85, 1.05)
+        else if (action === 'select') engine.playSfx('sleeveOut', 0.85, 0.95 + Math.random() * 0.1)
+        else if (action === 'swap') {
+          engine.playSfx('sleeveOut', 0.85, 0.95 + Math.random() * 0.1)
+          engine.playSfx('sleeveIn', 0.4, 1.1)
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

@@ -1,6 +1,6 @@
 import type { ThreeEvent } from "@react-three/fiber";
-import { useStore } from "../../state/store";
-import { SHELF, SLEEVE, sleeveSlot } from "../layout";
+import { dragActiveOrRecent, useStore } from "../../state/store";
+import { SHELF, SHELF_FOCUS, SLEEVE, sleeveSlot } from "../layout";
 import { AlbumSleeve } from "./AlbumSleeve";
 
 function Plant({ position }: { position: [number, number, number] }) {
@@ -31,24 +31,30 @@ function Plant({ position }: { position: [number, number, number] }) {
 
 export function Shelf() {
   const albums = useStore((s) => s.albums);
-  const setView = useStore((s) => s.setView);
 
-  const focus = (e: ThreeEvent<MouseEvent>) => {
+  const focusShelf = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    setView("shelf");
+    if (dragActiveOrRecent()) return;
+    if (useStore.getState().view !== "shelf") useStore.getState().setView("shelf");
   };
 
   const lastSlot = sleeveSlot(Math.max(albums.length - 1, 0));
 
   return (
     <group>
+      {/* back-wall click band behind the shelf (records in front still win the raycast) */}
+      <mesh position={[SHELF_FOCUS.x, SHELF_FOCUS.y, SHELF_FOCUS.z]} onClick={focusShelf}>
+        <planeGeometry args={[SHELF_FOCUS.w, SHELF_FOCUS.h]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+
       {/* uprights (606-style E-tracks against the wall) */}
       {SHELF.uprightX.map((x) => (
         <mesh
           key={x}
           position={[x, 1.25, SHELF.wallZ + 0.015]}
           castShadow
-          onClick={focus}
+          onClick={focusShelf}
         >
           <boxGeometry args={[0.024, 1.9, 0.024]} />
           <meshStandardMaterial
@@ -65,7 +71,7 @@ export function Shelf() {
             position={[SHELF.x, y, SHELF.wallZ + 0.03 + SHELF.d / 2]}
             castShadow
             receiveShadow
-            onClick={focus}
+            onClick={focusShelf}
           >
             <boxGeometry args={[SHELF.w, 0.018, SHELF.d]} />
             <meshStandardMaterial

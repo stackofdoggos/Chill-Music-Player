@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Album } from '../albums'
 
-export type View = 'overview' | 'player' | 'shelf' | 'volume' | 'arm'
+export type View = 'overview' | 'player' | 'shelf' | 'volume' | 'arm' | 'art'
 export type ShelfPhase = 'none' | 'pullingOut' | 'out'
 export type RecordPhase = 'none' | 'toPlatter' | 'onPlatter' | 'returning'
 export type NeedleState = 'rest' | 'down'
@@ -12,7 +12,7 @@ export const PHASE_DURATION: Record<string, number> = {
   returning: 1.6,
 }
 
-interface State {
+export interface State {
   albums: Album[]
   view: View
   selectedAlbumId: string | null
@@ -30,10 +30,14 @@ interface State {
   nowPlayingTrack: number
   hint: string | null
   lidOpen: boolean
+  hoveredAlbumId: string | null
 
   setAlbums: (albums: Album[]) => void
   setView: (v: View) => void
   selectAlbum: (id: string) => void
+  putBackSleeve: () => boolean
+  pressP: () => 'putBack' | 'select' | 'swap' | null
+  setHoveredAlbumId: (id: string | null) => void
   placeRecord: () => void
   returnRecord: () => void
   setPower: (on: boolean) => void
@@ -80,9 +84,10 @@ export const useStore = create<State>((set, get) => ({
   nowPlayingTrack: -1,
   hint: null,
   lidOpen: false,
+  hoveredAlbumId: null,
 
   setAlbums: (albums) => set({ albums }),
-  setView: (view) => set({ view }),
+  setView: (view) => set({ view, hoveredAlbumId: view === 'shelf' ? get().hoveredAlbumId : null }),
 
   selectAlbum: (id) => {
     const { recordPhase, selectedAlbumId, shelfPhase } = get()
@@ -94,6 +99,44 @@ export const useStore = create<State>((set, get) => ({
     set({ selectedAlbumId: id, shelfPhase: 'pullingOut', phaseStart: performance.now(), hint: null, sleeveSide: 'front' })
     scheduleShelfPhase(set, 'out', PHASE_DURATION.pullingOut)
   },
+
+  putBackSleeve: () => {
+    const { recordPhase, shelfPhase, selectedAlbumId } = get()
+    if (recordPhase === 'toPlatter' || recordPhase === 'returning') {
+      set({ hint: 'Return the record on the platter first' })
+      return false
+    }
+    if (!selectedAlbumId || (shelfPhase !== 'out' && shelfPhase !== 'pullingOut')) return false
+    clearTimeout(shelfPhaseTimer)
+    set({ shelfPhase: 'none', selectedAlbumId: null, sleeveSide: 'front', phaseStart: performance.now(), hint: null })
+    return true
+  },
+
+  pressP: () => {
+    const s = get()
+    if (s.view !== 'shelf') return null
+    if (s.recordPhase === 'toPlatter' || s.recordPhase === 'returning') {
+      set({ hint: 'Return the record on the platter first' })
+      return null
+    }
+
+    const inspecting = s.shelfPhase === 'out' || s.shelfPhase === 'pullingOut'
+    const hovered = s.hoveredAlbumId
+
+    if (inspecting) {
+      if (hovered && hovered !== s.selectedAlbumId) {
+        get().selectAlbum(hovered)
+        return 'swap'
+      }
+      return get().putBackSleeve() ? 'putBack' : null
+    }
+
+    if (!hovered) return null
+    get().selectAlbum(hovered)
+    return 'select'
+  },
+
+  setHoveredAlbumId: (hoveredAlbumId) => set({ hoveredAlbumId }),
 
   placeRecord: () => {
     const { shelfPhase, recordPhase, selectedAlbumId } = get()
@@ -157,6 +200,7 @@ const BACK: Record<View, View> = {
   player: 'overview',
   volume: 'player',
   arm: 'player',
+  art: 'overview',
 }
 
 let lastDragEnd = 0

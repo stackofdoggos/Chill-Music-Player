@@ -1,8 +1,9 @@
 import { useMemo, Suspense } from 'react'
+import type { ThreeEvent } from '@react-three/fiber'
 import { ContactShadows } from '@react-three/drei'
-import { requestUnfocus } from '../state/store'
+import { requestUnfocus, useStore } from '../state/store'
 import { woodTexture } from './textures'
-import { DESK, ROOM } from './layout'
+import { DESK, isShelfFocusPoint, ROOM } from './layout'
 import { WallArt } from './WallArt'
 
 export function Room() {
@@ -11,6 +12,15 @@ export function Room() {
 
   const toOverview = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
+    requestUnfocus()
+  }
+
+  const onBackWallClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    if (isShelfFocusPoint(e.point.x, e.point.y)) {
+      if (useStore.getState().view !== 'shelf') useStore.getState().setView('shelf')
+      return
+    }
     requestUnfocus()
   }
 
@@ -24,7 +34,7 @@ export function Room() {
       <ContactShadows position={[0, 0.005, -1.2]} opacity={0.4} scale={6} blur={2.4} far={2} resolution={512} frames={1} />
 
       {/* walls */}
-      <mesh position={[0, ROOM.h / 2, ROOM.backZ]} onClick={toOverview} receiveShadow>
+      <mesh position={[0, ROOM.h / 2, ROOM.backZ]} onClick={onBackWallClick} receiveShadow>
         <planeGeometry args={[ROOM.w, ROOM.h]} />
         <meshStandardMaterial color="#efece5" roughness={0.95} />
       </mesh>

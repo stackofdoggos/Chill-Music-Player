@@ -26,7 +26,10 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 
 State machine: `shelfPhase`: `none → pullingOut → out` (browsing covers on the shelf, independent of the platter).
 `recordPhase`: `none → toPlatter → onPlatter → returning → none` (vinyl on the player). `platterAlbumId` tracks which album is on the platter; `selectedAlbumId` is which sleeve is pulled out. While `onPlatter`, users can still pull out other sleeves to browse — `placeRecord` alone shows the return-first hint.
-Views: `overview | shelf | player | volume (knob close-up) | arm (top-down tonearm)`.
+Views: `overview | shelf | player | volume (knob close-up) | arm (top-down tonearm) | art (painting close-up)`.
+Shelf keyboard (when `view === 'shelf'`): `F` flips the pulled-out sleeve; `P` puts it back, pulls
+out the hovered spine, or swaps to a hovered spine while inspecting. `hoveredAlbumId` tracks the
+spine under the cursor for both `P` and the bottom-left control hints (`src/ui/controlHints.ts`).
 Unfocus order: `volume/arm → player`, `player/shelf → overview` (see `BACK` in store).
 Entering the precision views: click the volume knob → `volume` (drag or arrow keys adjust);
 click the tonearm bearing base/pivot column → `arm` (top-down); clicking the base again, the

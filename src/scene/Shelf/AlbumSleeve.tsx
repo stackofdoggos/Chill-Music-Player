@@ -48,10 +48,7 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
     }
     if (dragActiveOrRecent()) return
     const s = useStore.getState()
-    if (s.view !== 'shelf' && !isOut) {
-      s.setView('shelf')
-      if (s.view === 'overview') return // first click just walks over
-    }
+    if (s.view !== 'shelf' && !isOut) s.setView('shelf')
     if (selected && s.shelfPhase === 'out') {
       s.placeRecord()
       return
@@ -146,8 +143,13 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
             onPointerOver={(e) => {
               e.stopPropagation()
               setHover(true)
+              useStore.getState().setHoveredAlbumId(album.id)
             }}
-            onPointerOut={() => setHover(false)}
+            onPointerOut={() => {
+              setHover(false)
+              const s = useStore.getState()
+              if (s.hoveredAlbumId === album.id) s.setHoveredAlbumId(null)
+            }}
           >
             <boxGeometry args={[SLEEVE.thickness, SLEEVE.size, SLEEVE.size]} />
           </mesh>

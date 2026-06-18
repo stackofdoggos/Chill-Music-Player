@@ -95,6 +95,31 @@ export const SHELF = {
 
 export const SLEEVE = { size: 0.315, thickness: 0.0145 };
 
+/** invisible click target: shelf column on the back wall (uprights + all shelves) */
+export const SHELF_FOCUS = {
+  x: SHELF.x,
+  y: 1.3,
+  z: SHELF.wallZ + 0.011,
+  w: SHELF.w + 0.12,
+  h: 2.15,
+};
+
+export function isShelfFocusPoint(x: number, y: number): boolean {
+  const x0 = SHELF.x - SHELF.w / 2 - 0.06;
+  const x1 = SHELF.x + SHELF.w / 2 + 0.06;
+  const y0 = SHELF.shelfY[0] - 0.25;
+  const y1 = SHELF.shelfY[2] + SLEEVE.size / 2 + 0.2;
+  return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+}
+
+/** framed landscape art above the record player on the back wall */
+export const WALL_ART = {
+  x: PLAYER_POS.x,
+  y: DESK.topY + 0.86,
+  z: ROOM.backZ + 0.012,
+  width: 0.96,
+};
+
 export function sleeveSlot(i: number): THREE.Vector3 {
   return V3(
     0.71 + i * (SLEEVE.thickness + 0.004),
@@ -120,6 +145,8 @@ export const STATIONS: Record<
   volume: { pos: V3(-0.665, 0.875, -1.31), target: V3(-0.665, 0.797, -1.58) },
   // almost straight above the deck, for precise tonearm placement
   arm: { pos: V3(-0.86, 1.78, -1.6), target: V3(-0.9, 0.86, -1.78) },
+  // straight-on view of the back-wall painting
+  art: { pos: V3(WALL_ART.x, WALL_ART.y, -0.92), target: V3(WALL_ART.x, WALL_ART.y, WALL_ART.z) },
 };
 
 /** mouse-parallax amplitude per view (position, target) */
@@ -129,6 +156,7 @@ export const PARALLAX: Record<View, [number, number]> = {
   shelf: [0.07, 0.015],
   volume: [0.012, 0.003],
   arm: [0.03, 0.006],
+  art: [0.012, 0.003],
 };
 
 export function easeInOutCubic(t: number): number {
