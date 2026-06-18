@@ -7,6 +7,7 @@ export function NowPlaying() {
   const hint = useStore((s) => s.hint)
   const setHint = useStore((s) => s.setHint)
   const view = useStore((s) => s.view)
+  const shelfPhase = useStore((s) => s.shelfPhase)
   const phase = useStore((s) => s.recordPhase)
 
   useEffect(() => {
@@ -21,8 +22,8 @@ export function NowPlaying() {
 
   let help: string | null = null
   if (view === 'overview') help = 'Click the shelf to browse records'
-  else if (view === 'shelf' && phase === 'none') help = 'Click a spine to pull a record out'
-  else if (view === 'shelf' && phase === 'out') help = 'Drag the sleeve or press F to flip it — click again to put it on'
+  else if (view === 'shelf' && shelfPhase === 'none') help = 'Click a spine to pull a record out'
+  else if (view === 'shelf' && shelfPhase === 'out') help = 'Drag the sleeve or press F to flip it — click again to put it on'
   else if (view === 'volume') help = 'Drag the knob or use the arrow keys — click away to go back'
   else if (view === 'arm') help = 'Drag the arm over the record and let go — click the base to go back'
   else if (view === 'player' && phase === 'onPlatter' && needle === 'down' && !power)

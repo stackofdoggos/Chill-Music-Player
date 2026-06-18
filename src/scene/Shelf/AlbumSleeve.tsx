@@ -19,12 +19,12 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
   const slot = useMemo(() => sleeveSlot(index), [index])
   const [hover, setHover] = useState(false)
   const selected = useStore((s) => s.selectedAlbumId === album.id)
-  const phase = useStore((s) => s.recordPhase)
+  const shelfPhase = useStore((s) => s.shelfPhase)
   const sleeveSide = useStore((s) => s.sleeveSide)
   const draggingSleeve = useStore((s) => s.draggingSleeve)
   const flip = useRef(0)
   const moved = useRef(false)
-  const canFlip = selected && phase === 'out'
+  const canFlip = selected && shelfPhase === 'out'
   useCursor(hover && canFlip, canFlip && draggingSleeve ? 'grabbing' : 'grab')
 
   const materials = useMemo(() => {
@@ -34,7 +34,7 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
     return [std(t.front), std(t.back), t.edge, t.edge, std(t.spine), t.edge]
   }, [album])
 
-  const isOut = selected && (phase === 'pullingOut' || phase === 'out' || phase === 'returning')
+  const isOut = selected && (shelfPhase === 'pullingOut' || shelfPhase === 'out')
 
   useEffect(() => {
     if (!canFlip) flip.current = 0
@@ -52,7 +52,7 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
       s.setView('shelf')
       if (s.view === 'overview') return // first click just walks over
     }
-    if (selected && s.recordPhase === 'out') {
+    if (selected && s.shelfPhase === 'out') {
       s.placeRecord()
       return
     }

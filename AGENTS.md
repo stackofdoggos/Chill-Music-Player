@@ -15,7 +15,7 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 
 | File | Owns |
 | --- | --- |
-| `src/state/store.ts` | zustand store: `view`, selected album, record phase state machine, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
+| `src/state/store.ts` | zustand store: `view`, `selectedAlbumId` (shelf browse), `platterAlbumId`, `shelfPhase` + `recordPhase`, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, crackle/hum layers, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
@@ -24,7 +24,8 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/scene/Shelf/*` | 606 shelf, album sleeves (canvas textures from cover art), vinyl disc mesh. |
 | `scripts/fetch-albums.mjs` | yt-dlp + iTunes pipeline that builds `public/albums/` + `manifest.json`. |
 
-State machine: `recordPhase`: `none → pullingOut → out → toPlatter → onPlatter → returning → none`.
+State machine: `shelfPhase`: `none → pullingOut → out` (browsing covers on the shelf, independent of the platter).
+`recordPhase`: `none → toPlatter → onPlatter → returning → none` (vinyl on the player). `platterAlbumId` tracks which album is on the platter; `selectedAlbumId` is which sleeve is pulled out. While `onPlatter`, users can still pull out other sleeves to browse — `placeRecord` alone shows the return-first hint.
 Views: `overview | shelf | player | volume (knob close-up) | arm (top-down tonearm)`.
 Unfocus order: `volume/arm → player`, `player/shelf → overview` (see `BACK` in store).
 Entering the precision views: click the volume knob → `volume` (drag or arrow keys adjust);

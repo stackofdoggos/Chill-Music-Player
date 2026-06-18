@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import type { Album } from '../albums'
 
 export type View = 'overview' | 'player' | 'shelf' | 'volume' | 'arm'
-export type RecordPhase = 'none' | 'pullingOut' | 'out' | 'toPlatter' | 'onPlatter' | 'returning'
+export type ShelfPhase = 'none' | 'pullingOut' | 'out'
+export type RecordPhase = 'none' | 'toPlatter' | 'onPlatter' | 'returning'
 export type NeedleState = 'rest' | 'down'
 
 export const PHASE_DURATION: Record<string, number> = {
@@ -15,6 +16,8 @@ interface State {
   albums: Album[]
   view: View
   selectedAlbumId: string | null
+  platterAlbumId: string | null
+  shelfPhase: ShelfPhase
   recordPhase: RecordPhase
   phaseStart: number
   power: boolean
@@ -47,16 +50,24 @@ interface State {
 }
 
 let phaseTimer: ReturnType<typeof setTimeout> | undefined
+let shelfPhaseTimer: ReturnType<typeof setTimeout> | undefined
 
 function schedulePhase(set: (s: Partial<State>) => void, next: RecordPhase, delayS: number) {
   clearTimeout(phaseTimer)
   phaseTimer = setTimeout(() => set({ recordPhase: next, phaseStart: performance.now() }), delayS * 1000)
 }
 
+function scheduleShelfPhase(set: (s: Partial<State>) => void, next: ShelfPhase, delayS: number) {
+  clearTimeout(shelfPhaseTimer)
+  shelfPhaseTimer = setTimeout(() => set({ shelfPhase: next, phaseStart: performance.now() }), delayS * 1000)
+}
+
 export const useStore = create<State>((set, get) => ({
   albums: [],
   view: 'overview',
   selectedAlbumId: null,
+  platterAlbumId: null,
+  shelfPhase: 'none',
   recordPhase: 'none',
   phaseStart: 0,
   power: false,
@@ -74,19 +85,32 @@ export const useStore = create<State>((set, get) => ({
   setView: (view) => set({ view }),
 
   selectAlbum: (id) => {
-    const { recordPhase, selectedAlbumId } = get()
-    if (recordPhase === 'toPlatter' || recordPhase === 'onPlatter' || recordPhase === 'returning') {
+    const { recordPhase, selectedAlbumId, shelfPhase } = get()
+    if (recordPhase === 'toPlatter' || recordPhase === 'returning') {
       set({ hint: 'Return the record on the platter first' })
       return
     }
-    if (selectedAlbumId === id && recordPhase === 'out') return
-    set({ selectedAlbumId: id, recordPhase: 'pullingOut', phaseStart: performance.now(), hint: null, sleeveSide: 'front' })
-    schedulePhase(set, 'out', PHASE_DURATION.pullingOut)
+    if (selectedAlbumId === id && shelfPhase === 'out') return
+    set({ selectedAlbumId: id, shelfPhase: 'pullingOut', phaseStart: performance.now(), hint: null, sleeveSide: 'front' })
+    scheduleShelfPhase(set, 'out', PHASE_DURATION.pullingOut)
   },
 
   placeRecord: () => {
-    if (get().recordPhase !== 'out') return
-    set({ recordPhase: 'toPlatter', phaseStart: performance.now(), view: 'player', sleeveSide: 'front' })
+    const { shelfPhase, recordPhase, selectedAlbumId } = get()
+    if (shelfPhase !== 'out') return
+    if (recordPhase === 'onPlatter' || recordPhase === 'toPlatter' || recordPhase === 'returning') {
+      set({ hint: 'Return the record on the platter first' })
+      return
+    }
+    clearTimeout(shelfPhaseTimer)
+    set({
+      recordPhase: 'toPlatter',
+      platterAlbumId: selectedAlbumId,
+      phaseStart: performance.now(),
+      view: 'player',
+      sleeveSide: 'front',
+      shelfPhase: 'none',
+    })
     schedulePhase(set, 'onPlatter', PHASE_DURATION.toPlatter)
   },
 
@@ -96,7 +120,7 @@ export const useStore = create<State>((set, get) => ({
     set({ recordPhase: 'returning', phaseStart: performance.now(), view: 'shelf', nowPlayingTrack: -1 })
     clearTimeout(phaseTimer)
     phaseTimer = setTimeout(
-      () => set({ recordPhase: 'none', selectedAlbumId: null, phaseStart: performance.now(), sleeveSide: 'front' }),
+      () => set({ recordPhase: 'none', platterAlbumId: null, phaseStart: performance.now() }),
       PHASE_DURATION.returning * 1000,
     )
   },
@@ -109,8 +133,8 @@ export const useStore = create<State>((set, get) => ({
   setDraggingSleeve: (draggingSleeve) => set({ draggingSleeve }),
   setSleeveSide: (sleeveSide) => set({ sleeveSide }),
   flipSleeve: () => {
-    const { view, recordPhase, sleeveSide, draggingSleeve } = get()
-    if (view !== 'shelf' || recordPhase !== 'out' || draggingSleeve) return
+    const { view, shelfPhase, sleeveSide, draggingSleeve } = get()
+    if (view !== 'shelf' || shelfPhase !== 'out' || draggingSleeve) return
     set({ sleeveSide: sleeveSide === 'front' ? 'back' : 'front' })
   },
   setNowPlayingTrack: (nowPlayingTrack) => set({ nowPlayingTrack }),
@@ -120,6 +144,10 @@ export const useStore = create<State>((set, get) => ({
 
 export function selectedAlbum(s: State): Album | null {
   return s.albums.find((a) => a.id === s.selectedAlbumId) ?? null
+}
+
+export function platterAlbum(s: State): Album | null {
+  return s.albums.find((a) => a.id === s.platterAlbumId) ?? null
 }
 
 /** where clicking off / Esc leads from each view */
