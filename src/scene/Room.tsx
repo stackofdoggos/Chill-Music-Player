@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, Suspense } from 'react'
 import { ContactShadows } from '@react-three/drei'
 import { requestUnfocus } from '../state/store'
 import { woodTexture } from './textures'
 import { DESK, ROOM } from './layout'
+import { WallArt } from './WallArt'
 
 export function Room() {
   const floorTex = useMemo(() => woodTexture(5, 5, true), [])
@@ -44,6 +45,10 @@ export function Room() {
         <boxGeometry args={[ROOM.w, 0.09, 0.014]} />
         <meshStandardMaterial color="#e2dfd8" roughness={0.8} />
       </mesh>
+
+      <Suspense fallback={null}>
+        <WallArt />
+      </Suspense>
 
       {/* desk */}
       <group position={[DESK.x, 0, DESK.z]}>
