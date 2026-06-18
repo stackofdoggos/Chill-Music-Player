@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { useStore, selectedAlbum } from '../state/store'
+import { useStore, platterAlbum } from '../state/store'
 
 export function NowPlaying() {
-  const album = useStore(selectedAlbum)
+  const album = useStore(platterAlbum)
   const trackIndex = useStore((s) => s.nowPlayingTrack)
   const hint = useStore((s) => s.hint)
   const setHint = useStore((s) => s.setHint)

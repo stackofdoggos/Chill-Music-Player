@@ -85,12 +85,12 @@ export function buildSfx(ctx: AudioContext): Buffers {
   const crackleLoop = buffer(ctx, 4, (d, sr) => {
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.012
     lowpass(d, 0.12)
-    // small ticks
-    for (let k = 0; k < 110; k++) {
+    // small ticks (~1/3 previous density)
+    for (let k = 0; k < 37; k++) {
       click(d, sr, Math.random() * 3.96, 0.002 + Math.random() * 0.004, 0.05 + Math.random() * 0.12)
     }
-    // a few larger pops
-    for (let k = 0; k < 7; k++) {
+    // a few larger pops (~1/3 previous density)
+    for (let k = 0; k < 2; k++) {
       const at = Math.random() * 3.9
       click(d, sr, at, 0.012, 0.3 + Math.random() * 0.25)
       thumpAt(d, sr, at, 90, 0.02, 0.12)

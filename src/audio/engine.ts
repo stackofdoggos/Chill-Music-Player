@@ -340,7 +340,7 @@ class AudioEngine {
   }
 
   private crackleLevel() {
-    return 0.5
+    return 0.25
   }
 
   private rampGain(node: GainNode, value: number, seconds: number) {
