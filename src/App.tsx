@@ -76,7 +76,7 @@ export default function App() {
         else if (action === 'select') engine.playSfx('sleeveOut', 0.85, 0.95 + Math.random() * 0.1)
         else if (action === 'swap') {
           engine.playSfx('sleeveOut', 0.85, 0.95 + Math.random() * 0.1)
-          engine.playSfx('sleeveIn', 0.4, 1.1)
+          engine.playSfx('sleeveIn', 0.85, 1.05)
         }
       }
     }
@@ -84,8 +84,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const enter = () => {
-    engine.init()
+  const enter = async () => {
+    await engine.init()
     engine.setVolume(useStore.getState().volume)
     setEntered(true)
   }

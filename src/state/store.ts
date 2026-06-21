@@ -36,6 +36,7 @@ export interface State {
   setView: (v: View) => void
   selectAlbum: (id: string) => void
   putBackSleeve: () => boolean
+  clickShelfBackdrop: () => 'putBack' | 'focus' | null
   pressP: () => 'putBack' | 'select' | 'swap' | null
   setHoveredAlbumId: (id: string | null) => void
   placeRecord: () => void
@@ -64,6 +65,10 @@ function schedulePhase(set: (s: Partial<State>) => void, next: RecordPhase, dela
 function scheduleShelfPhase(set: (s: Partial<State>) => void, next: ShelfPhase, delayS: number) {
   clearTimeout(shelfPhaseTimer)
   shelfPhaseTimer = setTimeout(() => set({ shelfPhase: next, phaseStart: performance.now() }), delayS * 1000)
+}
+
+function inspectingSleeve(s: State) {
+  return !!s.selectedAlbumId && (s.shelfPhase === 'out' || s.shelfPhase === 'pullingOut')
 }
 
 export const useStore = create<State>((set, get) => ({
@@ -112,6 +117,17 @@ export const useStore = create<State>((set, get) => ({
     return true
   },
 
+  clickShelfBackdrop: () => {
+    if (dragActiveOrRecent()) return null
+    const s = get()
+    if (inspectingSleeve(s)) return get().putBackSleeve() ? 'putBack' : null
+    if (s.view !== 'shelf') {
+      set({ view: 'shelf' })
+      return 'focus'
+    }
+    return null
+  },
+
   pressP: () => {
     const s = get()
     if (s.view !== 'shelf') return null
@@ -120,7 +136,7 @@ export const useStore = create<State>((set, get) => ({
       return null
     }
 
-    const inspecting = s.shelfPhase === 'out' || s.shelfPhase === 'pullingOut'
+    const inspecting = inspectingSleeve(s)
     const hovered = s.hoveredAlbumId
 
     if (inspecting) {

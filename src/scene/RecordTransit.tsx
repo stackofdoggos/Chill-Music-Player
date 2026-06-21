@@ -53,7 +53,7 @@ export function RecordTransit() {
       engine.loadAlbum(null)
       engine.playSfx('vinylOut', 0.5, 1.1)
     } else if (phase === 'none' && prevPhase.current === 'returning') {
-      engine.playSfx('sleeveIn', 0.7)
+      engine.playSfx('sleeveIn', 0.85, 1.05)
     }
     prevPhase.current = phase
   }, [phase])

@@ -9,7 +9,7 @@ this file in the same change.
 A 3D record room (React Three Fiber + Vite + TS). The user pulls album sleeves from a
 shelf, places the vinyl on a Braun SK4-style player, and controls it with a power switch,
 volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded albums in
-`public/albums/` plus fully synthesized foley (`src/audio/sfx.ts` — no sound files).
+`public/albums/` plus sampled foley in `public/sfx/` (see `CREDITS.md`).
 
 ## Architecture map
 

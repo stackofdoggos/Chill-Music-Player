@@ -2,6 +2,7 @@ import { useMemo, Suspense } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { ContactShadows } from '@react-three/drei'
 import { requestUnfocus, useStore } from '../state/store'
+import { engine } from '../audio/engine'
 import { woodTexture } from './textures'
 import { DESK, isShelfFocusPoint, ROOM } from './layout'
 import { WallArt } from './WallArt'
@@ -18,7 +19,8 @@ export function Room() {
   const onBackWallClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
     if (isShelfFocusPoint(e.point.x, e.point.y)) {
-      if (useStore.getState().view !== 'shelf') useStore.getState().setView('shelf')
+      const action = useStore.getState().clickShelfBackdrop()
+      if (action === 'putBack') engine.playSfx('sleeveIn', 0.85, 1.05)
       return
     }
     requestUnfocus()

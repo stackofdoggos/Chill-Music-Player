@@ -57,7 +57,7 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
     s.selectAlbum(album.id)
     if (useStore.getState().selectedAlbumId === album.id && before !== album.id) {
       engine.playSfx('sleeveOut', 0.85, 0.95 + Math.random() * 0.1)
-      if (before) engine.playSfx('sleeveIn', 0.4, 1.1)
+      if (before) engine.playSfx('sleeveIn', 0.85, 1.05)
     }
   }
 

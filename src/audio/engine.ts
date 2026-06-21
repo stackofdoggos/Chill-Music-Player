@@ -21,7 +21,7 @@ class AudioEngine {
   private crackleGain!: GainNode
   private crackleSrc!: AudioBufferSourceNode
   private humGain!: GainNode
-  private sfx!: ReturnType<typeof buildSfx>
+  private sfx!: Awaited<ReturnType<typeof buildSfx>>
   private el: HTMLAudioElement | null = null
 
   private album: Album | null = null
@@ -30,6 +30,7 @@ class AudioEngine {
   private dropTimer: ReturnType<typeof setTimeout> | undefined
   private metaHandler: (() => void) | null = null
   private durationProbes: HTMLAudioElement[] = []
+  private booting: Promise<void> | null = null
 
   needleDown = false
   /** set once a drop/re-seek has loaded the target track and applied currentTime */
@@ -49,6 +50,11 @@ class AudioEngine {
   }
 
   init() {
+    if (this.ctx) return Promise.resolve()
+    return (this.booting ??= this.initAsync())
+  }
+
+  private async initAsync() {
     if (this.ctx) return
     const ctx = new AudioContext()
     this.ctx = ctx
@@ -72,7 +78,7 @@ class AudioEngine {
     this.musicGain.connect(this.master)
     this.musicIn = low
 
-    this.sfx = buildSfx(ctx)
+    this.sfx = await buildSfx(ctx)
 
     this.crackleGain = ctx.createGain()
     this.crackleGain.gain.value = 0
