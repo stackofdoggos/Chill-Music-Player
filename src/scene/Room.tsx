@@ -1,15 +1,51 @@
-import { useMemo } from 'react'
-import { ContactShadows } from '@react-three/drei'
-import { requestUnfocus } from '../state/store'
+import { useMemo, useRef, Suspense } from 'react'
+import type { ThreeEvent } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
+import type { MeshStandardMaterial } from 'three'
+import { requestUnfocus, useStore } from '../state/store'
+import { engine } from '../audio/engine'
 import { woodTexture } from './textures'
-import { DESK, ROOM } from './layout'
+import { DESK, isShelfFocusPoint, ROOM } from './layout'
+import { sampleAtmosphere } from './dayNight'
+import { WallArt } from './WallArt'
 
 export function Room() {
   const floorTex = useMemo(() => woodTexture(5, 5, true), [])
   const deskTex = useMemo(() => woodTexture(2, 1), [])
 
+  const backWallMat = useRef<MeshStandardMaterial>(null)
+  const leftWallMat = useRef<MeshStandardMaterial>(null)
+  const rightWallMat = useRef<MeshStandardMaterial>(null)
+  const ceilingMat = useRef<MeshStandardMaterial>(null)
+  const windowMat = useRef<MeshStandardMaterial>(null)
+
+  useFrame(() => {
+    const a = sampleAtmosphere(useStore.getState().dayPhase)
+    for (const ref of [backWallMat, leftWallMat, rightWallMat]) {
+      if (ref.current) ref.current.color.copy(a.wallColor)
+    }
+    if (ceilingMat.current) {
+      ceilingMat.current.emissive.copy(a.ceilingEmissive)
+      ceilingMat.current.emissiveIntensity = a.ceilingEmissiveIntensity
+    }
+    if (windowMat.current) {
+      windowMat.current.emissive.copy(a.windowEmissive)
+      windowMat.current.emissiveIntensity = a.windowEmissiveIntensity
+    }
+  })
+
   const toOverview = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
+    requestUnfocus()
+  }
+
+  const onBackWallClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    if (isShelfFocusPoint(e.point.x, e.point.y)) {
+      const action = useStore.getState().clickShelfBackdrop()
+      if (action === 'putBack') engine.playSfx('sleeveIn', 0.85, 1.05)
+      return
+    }
     requestUnfocus()
   }
 
@@ -20,30 +56,47 @@ export function Room() {
         <planeGeometry args={[ROOM.w, ROOM.d]} />
         <meshStandardMaterial map={floorTex} roughness={0.7} />
       </mesh>
-      <ContactShadows position={[0, 0.005, -1.2]} opacity={0.4} scale={6} blur={2.4} far={2} resolution={512} frames={1} />
 
       {/* walls */}
-      <mesh position={[0, ROOM.h / 2, ROOM.backZ]} onClick={toOverview} receiveShadow>
+      <mesh position={[0, ROOM.h / 2, ROOM.backZ]} onClick={onBackWallClick} receiveShadow>
         <planeGeometry args={[ROOM.w, ROOM.h]} />
-        <meshStandardMaterial color="#efece5" roughness={0.95} />
+        <meshStandardMaterial ref={backWallMat} color="#ece9e2" roughness={0.95} />
       </mesh>
       <mesh position={[-ROOM.w / 2, ROOM.h / 2, 0]} rotation-y={Math.PI / 2} onClick={toOverview}>
         <planeGeometry args={[ROOM.d + 2, ROOM.h]} />
-        <meshStandardMaterial color="#ece9e2" roughness={0.95} />
+        <meshStandardMaterial ref={leftWallMat} color="#ece9e2" roughness={0.95} />
       </mesh>
       <mesh position={[ROOM.w / 2, ROOM.h / 2, 0]} rotation-y={-Math.PI / 2} onClick={toOverview}>
         <planeGeometry args={[ROOM.d + 2, ROOM.h]} />
-        <meshStandardMaterial color="#ece9e2" roughness={0.95} />
+        <meshStandardMaterial ref={rightWallMat} color="#ece9e2" roughness={0.95} />
       </mesh>
       <mesh position={[0, ROOM.h, 0]} rotation-x={Math.PI / 2}>
         <planeGeometry args={[ROOM.w, ROOM.d + 2]} />
-        <meshStandardMaterial color="#efece6" emissive="#b8b4ac" emissiveIntensity={0.55} roughness={1} />
+        <meshStandardMaterial ref={ceilingMat} color="#efece6" emissive="#b8b4ac" emissiveIntensity={0.55} roughness={1} />
       </mesh>
+
+      {/* afternoon sun through the right-hand window — drives golden-hour bloom */}
+      <mesh position={[ROOM.w / 2 - 0.012, 1.45, -0.55]} rotation-y={-Math.PI / 2}>
+        <planeGeometry args={[1.35, 1.05]} />
+        <meshStandardMaterial
+          ref={windowMat}
+          color="#fff8f0"
+          emissive="#ffb040"
+          emissiveIntensity={1.65}
+          roughness={0.35}
+          metalness={0}
+        />
+      </mesh>
+
       {/* skirting board on the back wall */}
       <mesh position={[0, 0.045, ROOM.backZ + 0.008]}>
         <boxGeometry args={[ROOM.w, 0.09, 0.014]} />
         <meshStandardMaterial color="#e2dfd8" roughness={0.8} />
       </mesh>
+
+      <Suspense fallback={null}>
+        <WallArt />
+      </Suspense>
 
       {/* desk */}
       <group position={[DESK.x, 0, DESK.z]}>

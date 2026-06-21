@@ -27,11 +27,14 @@ const DRAG_PLANE = new THREE.Plane(
 const hit = new THREE.Vector3()
 
 const PITCH = { rest: -0.015, lifted: -0.075, down: 0.012 }
+const DROP_DAMP = 0.11 // settle onto the groove after release
+const GROOVE_DAMP = 0.18 // follow playback without the old post-drop shuffle
 
 export function Tonearm() {
   const arm = useRef<THREE.Group>(null)
   const cur = useRef({ yaw: ARM.yawRest, pitch: PITCH.rest })
   const dragYaw = useRef(ARM.yawRest)
+  const dropYaw = useRef(ARM.yawRest)
   const [hover, setHover] = useState(false)
   const [baseHover, setBaseHover] = useState(false)
   const dragging = useStore((s) => s.draggingTonearm)
@@ -87,6 +90,7 @@ export function Tonearm() {
     if (s.recordPhase === 'onPlatter' && r <= GROOVE_OUT + 0.01 && r >= GROOVE_IN - 0.006) {
       s.setNeedle('down')
       engine.dropNeedle(radiusToProgress(r))
+      dropYaw.current = dragYaw.current
     } else {
       s.setNeedle('rest')
       engine.playSfx('needleLift', 0.3, 1.4) // settle back on the armrest
@@ -101,12 +105,19 @@ export function Tonearm() {
     if (s.draggingTonearm) {
       yaw = dragYaw.current
       pitch = PITCH.lifted
+      easing.damp(cur.current, 'yaw', yaw, 0.08, dt)
+      easing.damp(cur.current, 'pitch', pitch, 0.16, dt)
     } else if (s.needle === 'down') {
-      yaw = yawAtRadius(progressToRadius(engine.getProgress()))
+      yaw = engine.seekReady
+        ? yawAtRadius(progressToRadius(engine.getProgress()))
+        : dropYaw.current
       pitch = PITCH.down
+      easing.damp(cur.current, 'yaw', yaw, engine.seekReady ? GROOVE_DAMP : DROP_DAMP, dt)
+      easing.damp(cur.current, 'pitch', pitch, 0.2, dt)
+    } else {
+      easing.damp(cur.current, 'yaw', yaw, 0.25, dt)
+      easing.damp(cur.current, 'pitch', pitch, 0.16, dt)
     }
-    easing.damp(cur.current, 'yaw', yaw, s.draggingTonearm ? 0.08 : 0.25, dt)
-    easing.damp(cur.current, 'pitch', pitch, 0.16, dt)
     arm.current.rotation.set(cur.current.pitch, cur.current.yaw, 0)
   })
 

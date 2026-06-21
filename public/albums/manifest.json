@@ -1,462 +1,242 @@
 {
   "albums": [
     {
-      "id": "mbdtf",
-      "artist": "Kanye West",
-      "title": "My Beautiful Dark Twisted Fantasy",
-      "year": "2010",
-      "accent": "#b3202c",
-      "cover": "/albums/mbdtf/cover.jpg",
-      "tracks": [
-        {
-          "file": "01.m4a",
-          "name": "Dark Fantasy",
-          "durationMs": 280760
-        },
-        {
-          "file": "02.m4a",
-          "name": "See Me Now (feat. Beyoncé, Charlie Wilson & Big Sean) [Bonus Track]",
-          "durationMs": 363773
-        },
-        {
-          "file": "03.m4a",
-          "name": "Gorgeous (feat. Kid Cudi & Raekwon)",
-          "durationMs": 357653
-        },
-        {
-          "file": "04.m4a",
-          "name": "Runway (Film)",
-          "durationMs": 547812
-        },
-        {
-          "file": "05.m4a",
-          "name": "Power",
-          "durationMs": 292093
-        },
-        {
-          "file": "06.m4a",
-          "name": "All of the Lights (Interlude)",
-          "durationMs": 62267
-        },
-        {
-          "file": "07.m4a",
-          "name": "All of the Lights",
-          "durationMs": 299600
-        },
-        {
-          "file": "08.m4a",
-          "name": "Monster (feat. JAŸ-Z, Rick Ross, Nicki Minaj & Bon Iver)",
-          "durationMs": 378853
-        },
-        {
-          "file": "09.m4a",
-          "name": "So Appalled (feat. JAŸ-Z, Pusha T, Prynce Cy Hi, Swizz Beatz & RZA)",
-          "durationMs": 397787
-        },
-        {
-          "file": "10.m4a",
-          "name": "Devil In a New Dress (feat. Rick Ross)",
-          "durationMs": 352547
-        },
-        {
-          "file": "11.m4a",
-          "name": "Runaway (feat. Pusha T)",
-          "durationMs": 547667
-        },
-        {
-          "file": "12.m4a",
-          "name": "Hell of a Life",
-          "durationMs": 327827
-        },
-        {
-          "file": "13.m4a",
-          "name": "Blame Game (feat. John Legend)",
-          "durationMs": 469853
-        },
-        {
-          "file": "14.m4a",
-          "name": "Lost In the World (feat. Bon Iver)",
-          "durationMs": 256587
-        },
-        {
-          "file": "15.m4a",
-          "name": "Who Will Survive In America",
-          "durationMs": 98213
-        }
-      ]
-    },
-    {
-      "id": "kind-of-blue",
-      "artist": "Miles Davis",
-      "title": "Kind of Blue",
-      "year": "1959",
+      "id": "beethoven-eroica",
+      "artist": "Ludwig van Beethoven",
+      "title": "Symphony No. 3 “Eroica”",
+      "year": "1804",
       "accent": "#1e3a5f",
-      "cover": "/albums/kind-of-blue/cover.jpg",
+      "cover": "/albums/beethoven-eroica/cover.jpg",
       "tracks": [
         {
           "file": "01.m4a",
-          "name": "So What",
-          "durationMs": 547983
+          "name": "Symphony No. 3 in E Flat Major Eroica Op. 55 - I. Allegro Con Brio",
+          "durationMs": 911552
         },
         {
           "file": "02.m4a",
-          "name": "Freddie Freeloader",
-          "durationMs": 588411
+          "name": "Symphony No. 3 in E Flat Major Eroica Op. 55 - II. Marcia Funebre Adagio Assai",
+          "durationMs": 928508
         },
         {
           "file": "03.m4a",
-          "name": "Blue In Green",
-          "durationMs": 335939
+          "name": "Symphony No. 3 in E Flat Major Eroica Op. 55 - III. Scherzo Allegro Vivace",
+          "durationMs": 349340
         },
         {
           "file": "04.m4a",
-          "name": "All Blues",
-          "durationMs": 692897
-        },
-        {
-          "file": "05.m4a",
-          "name": "Flamenco Sketches",
-          "durationMs": 561105
+          "name": "Symphony No. 3 in E Flat Major Eroica Op. 55 - IV. Finale Allegro Molto",
+          "durationMs": 704637
         }
       ]
     },
     {
-      "id": "moon-safari",
-      "artist": "Air",
-      "title": "Moon Safari",
-      "year": "1998",
+      "id": "beethoven-fifth",
+      "artist": "Ludwig van Beethoven",
+      "title": "Symphony No. 5",
+      "year": "1808",
+      "accent": "#2c1810",
+      "cover": "/albums/beethoven-fifth/cover.jpg",
+      "tracks": [
+        {
+          "file": "01.m4a",
+          "name": "I. Allegro con brio",
+          "durationMs": 500088
+        },
+        {
+          "file": "02.m4a",
+          "name": "II. Andante con moto",
+          "durationMs": 682000
+        },
+        {
+          "file": "03.m4a",
+          "name": "III. Scherzo — Allegro",
+          "durationMs": 337451
+        },
+        {
+          "file": "04.m4a",
+          "name": "IV. Allegro",
+          "durationMs": 686906
+        }
+      ]
+    },
+    {
+      "id": "mozart-jupiter",
+      "artist": "Wolfgang Amadeus Mozart",
+      "title": "Symphony No. 41 “Jupiter”",
+      "year": "1788",
       "accent": "#c8b89a",
-      "cover": "/albums/moon-safari/cover.jpg",
+      "cover": "/albums/mozart-jupiter/cover.jpg",
       "tracks": [
         {
           "file": "01.m4a",
-          "name": "La Femme d'argent",
-          "durationMs": 426614
+          "name": "Mozart: Symphony #41 In C, K 551, \"Jupiter\" - 1. Allegro Vivace",
+          "durationMs": 500950
         },
         {
           "file": "02.m4a",
-          "name": "Sexy Boy",
-          "durationMs": 298467
+          "name": "Mozart: Symphony #41 In C, K 551, \"Jupiter\" - 2. Andante Cantabile",
+          "durationMs": 456019
         },
         {
           "file": "03.m4a",
-          "name": "All I Need",
-          "durationMs": 268307
+          "name": "Mozart: Symphony #41 In C, K 551, \"Jupiter\" - 3. Menuetto: Allegretto, Trio",
+          "durationMs": 276036
         },
         {
           "file": "04.m4a",
-          "name": "Kelly Watch the Stars",
-          "durationMs": 226293
-        },
-        {
-          "file": "05.m4a",
-          "name": "Talisman",
-          "durationMs": 256707
-        },
-        {
-          "file": "06.m4a",
-          "name": "Remember",
-          "durationMs": 154293
-        },
-        {
-          "file": "07.m4a",
-          "name": "You Make It Easy",
-          "durationMs": 241533
-        },
-        {
-          "file": "08.m4a",
-          "name": "Ce Matin-Là",
-          "durationMs": 219040
-        },
-        {
-          "file": "09.m4a",
-          "name": "New Star In the Sky",
-          "durationMs": 340600
-        },
-        {
-          "file": "10.m4a",
-          "name": "Le voyage de Pénélope",
-          "durationMs": 190867
+          "name": "Mozart: Symphony #41 In C, K 551, \"Jupiter\" - 4. Finale: Molto Allegro",
+          "durationMs": 359105
         }
       ]
     },
     {
-      "id": "dive",
-      "artist": "Tycho",
-      "title": "Dive",
-      "year": "2012",
-      "accent": "#e0552c",
-      "cover": "/albums/dive/cover.jpg",
-      "tracks": [
-        {
-          "file": "01.m4a",
-          "name": "A Walk",
-          "durationMs": 316919
-        },
-        {
-          "file": "02.m4a",
-          "name": "Hours",
-          "durationMs": 344158
-        },
-        {
-          "file": "03.m4a",
-          "name": "Daydream",
-          "durationMs": 334459
-        },
-        {
-          "file": "04.m4a",
-          "name": "Dive",
-          "durationMs": 499791
-        },
-        {
-          "file": "05.m4a",
-          "name": "Coastal Brake",
-          "durationMs": 334129
-        },
-        {
-          "file": "06.m4a",
-          "name": "Ascension",
-          "durationMs": 264299
-        },
-        {
-          "file": "07.m4a",
-          "name": "Melanine",
-          "durationMs": 173338
-        },
-        {
-          "file": "08.m4a",
-          "name": "Adrift",
-          "durationMs": 362389
-        },
-        {
-          "file": "09.m4a",
-          "name": "Epigram",
-          "durationMs": 148957
-        },
-        {
-          "file": "10.m4a",
-          "name": "Elegy",
-          "durationMs": 263561
-        },
-        {
-          "file": "11.m4a",
-          "name": "Dive (Memoryhouse Remix)",
-          "durationMs": 245400
-        },
-        {
-          "file": "12.m4a",
-          "name": "Adrift (Shigeto's Adrift A Dream Remix)",
-          "durationMs": 298556
-        },
-        {
-          "file": "13.m4a",
-          "name": "Dive (Keep Shelly In Athens Remix)",
-          "durationMs": 280034
-        },
-        {
-          "file": "14.m4a",
-          "name": "A Walk (Kolombo Remix)",
-          "durationMs": 356930
-        },
-        {
-          "file": "15.m4a",
-          "name": "Ascension (GARZA Remix)",
-          "durationMs": 309476
-        }
-      ]
-    },
-    {
-      "id": "black-sands",
-      "artist": "Bonobo",
-      "title": "Black Sands",
-      "year": "2010",
-      "accent": "#3d3a35",
-      "cover": "/albums/black-sands/cover.jpg",
-      "tracks": [
-        {
-          "file": "01.m4a",
-          "name": "Prelude",
-          "durationMs": 78267
-        },
-        {
-          "file": "02.m4a",
-          "name": "Kiara",
-          "durationMs": 230307
-        },
-        {
-          "file": "03.m4a",
-          "name": "Kong",
-          "durationMs": 237827
-        },
-        {
-          "file": "04.m4a",
-          "name": "Eyesdown (feat. Andreya Triana)",
-          "durationMs": 326240
-        },
-        {
-          "file": "05.m4a",
-          "name": "El Toro",
-          "durationMs": 224293
-        },
-        {
-          "file": "06.m4a",
-          "name": "We Could Forever",
-          "durationMs": 259840
-        },
-        {
-          "file": "07.m4a",
-          "name": "1009",
-          "durationMs": 270427
-        },
-        {
-          "file": "08.m4a",
-          "name": "All In Forms",
-          "durationMs": 291733
-        },
-        {
-          "file": "09.m4a",
-          "name": "The Keeper (feat. Andreya Triana)",
-          "durationMs": 288933
-        },
-        {
-          "file": "10.m4a",
-          "name": "Stay the Same (feat. Andreya Triana)",
-          "durationMs": 284800
-        },
-        {
-          "file": "11.m4a",
-          "name": "Animals",
-          "durationMs": 405040
-        },
-        {
-          "file": "12.m4a",
-          "name": "Black Sands",
-          "durationMs": 408960
-        }
-      ]
-    },
-    {
-      "id": "con-todo-el-mundo",
-      "artist": "Khruangbin",
-      "title": "Con Todo El Mundo",
-      "year": "2018",
-      "accent": "#d4a017",
-      "cover": "/albums/con-todo-el-mundo/cover.jpg",
-      "tracks": [
-        {
-          "file": "01.m4a",
-          "name": "Cómo Me Quieres",
-          "durationMs": 225154
-        },
-        {
-          "file": "02.m4a",
-          "name": "Lady and Man",
-          "durationMs": 258044
-        },
-        {
-          "file": "03.m4a",
-          "name": "Maria También",
-          "durationMs": 190999
-        },
-        {
-          "file": "04.m4a",
-          "name": "August 10",
-          "durationMs": 265410
-        },
-        {
-          "file": "05.m4a",
-          "name": "Cómo Te Quiero",
-          "durationMs": 242536
-        },
-        {
-          "file": "06.m4a",
-          "name": "Shades of Man",
-          "durationMs": 227148
-        },
-        {
-          "file": "07.m4a",
-          "name": "Evan Finds the Third Room",
-          "durationMs": 240743
-        },
-        {
-          "file": "08.m4a",
-          "name": "A Hymn",
-          "durationMs": 190534
-        },
-        {
-          "file": "09.m4a",
-          "name": "Rules",
-          "durationMs": 269033
-        },
-        {
-          "file": "10.m4a",
-          "name": "Friday Morning",
-          "durationMs": 410900
-        }
-      ]
-    },
-    {
-      "id": "salad-days",
-      "artist": "Mac DeMarco",
-      "title": "Salad Days",
-      "year": "2014",
+      "id": "vivaldi-spring",
+      "artist": "Antonio Vivaldi",
+      "title": "The Four Seasons: Spring",
+      "year": "1723",
       "accent": "#4a7c59",
-      "cover": "/albums/salad-days/cover.jpg",
+      "cover": "/albums/vivaldi-spring/cover.jpg",
       "tracks": [
         {
           "file": "01.m4a",
-          "name": "Salad Days",
-          "durationMs": 145893
+          "name": "Violin Concerto in E major, RV 269 'Spring' - I. Allegro",
+          "durationMs": 217459
         },
         {
           "file": "02.m4a",
-          "name": "Blue Boy",
-          "durationMs": 126224
+          "name": "Violin Concerto in E major, RV 269 'Spring' - II. Largo",
+          "durationMs": 159270
         },
         {
           "file": "03.m4a",
-          "name": "Brother",
-          "durationMs": 212746
+          "name": "Violin Concerto in E major, RV 269 'Spring' - III. Allegro",
+          "durationMs": 255966
+        }
+      ]
+    },
+    {
+      "id": "chopin-romances",
+      "artist": "Frédéric Chopin",
+      "title": "Nocturnes & Waltzes",
+      "year": "1830",
+      "accent": "#3d3a35",
+      "cover": "/albums/chopin-romances/cover.jpg",
+      "tracks": [
+        {
+          "file": "01.m4a",
+          "name": "Nocturne Op. 9 No. 2",
+          "durationMs": 276608
+        },
+        {
+          "file": "02.m4a",
+          "name": "Nocturne Op. 27 No. 1",
+          "durationMs": 351981
+        },
+        {
+          "file": "03.m4a",
+          "name": "Fantasie-Impromptu Op. 66",
+          "durationMs": 326887
         },
         {
           "file": "04.m4a",
-          "name": "Let Her Go",
-          "durationMs": 182607
+          "name": "Ballade No. 1 Op. 23",
+          "durationMs": 613589
         },
         {
           "file": "05.m4a",
-          "name": "Goodbye Weekend",
-          "durationMs": 179767
+          "name": "Waltz Op. 64 No. 1",
+          "durationMs": 107445
         },
         {
           "file": "06.m4a",
-          "name": "Let My Baby Stay",
-          "durationMs": 248172
+          "name": "Waltz Op. 64 No. 2",
+          "durationMs": 230058
         },
         {
           "file": "07.m4a",
-          "name": "Passing Out Pieces",
-          "durationMs": 167091
+          "name": "Waltz Op. 69 No. 1",
+          "durationMs": 248393
         },
         {
           "file": "08.m4a",
-          "name": "Treat Her Better",
-          "durationMs": 229121
+          "name": "Prelude Op. 28 No. 15 “Raindrop”",
+          "durationMs": 295237
         },
         {
           "file": "09.m4a",
-          "name": "Chamber of Reflection",
-          "durationMs": 231724
+          "name": "Mazurka Op. 7 No. 3",
+          "durationMs": 240000
         },
         {
           "file": "10.m4a",
-          "name": "Go Easy",
-          "durationMs": 204901
+          "name": "Prelude Op. 28 No. 7",
+          "durationMs": 155264
+        }
+      ]
+    },
+    {
+      "id": "bach-essentials",
+      "artist": "Johann Sebastian Bach",
+      "title": "Bach Essentials",
+      "year": "1720",
+      "accent": "#d4a017",
+      "cover": "/albums/bach-essentials/cover.jpg",
+      "tracks": [
+        {
+          "file": "01.m4a",
+          "name": "Jesu, Joy of Man’s Desiring",
+          "durationMs": 173061
         },
         {
-          "file": "11.m4a",
-          "name": "Jonny's Odyssey",
-          "durationMs": 158139
+          "file": "02.m4a",
+          "name": "Cello Suite No. 1 — Prelude",
+          "durationMs": 203981
+        },
+        {
+          "file": "03.m4a",
+          "name": "Partita No. 2 — Chaconne",
+          "durationMs": 240000
+        },
+        {
+          "file": "04.m4a",
+          "name": "Toccata in D Minor",
+          "durationMs": 172970
+        },
+        {
+          "file": "05.m4a",
+          "name": "Fantasia in C Minor BWV 537",
+          "durationMs": 272313
+        },
+        {
+          "file": "06.m4a",
+          "name": "Fugue in C Minor BWV 537",
+          "durationMs": 239804
+        },
+        {
+          "file": "07.m4a",
+          "name": "Orchestral Suite No. 3 — Air",
+          "durationMs": 449018
+        }
+      ]
+    },
+    {
+      "id": "debussy-impressions",
+      "artist": "Claude Debussy",
+      "title": "Impressions",
+      "year": "1890",
+      "accent": "#5a6b8a",
+      "cover": "/albums/debussy-impressions/cover.jpg",
+      "tracks": [
+        {
+          "file": "01.m4a",
+          "name": "Clair de lune",
+          "durationMs": 33000
+        },
+        {
+          "file": "02.m4a",
+          "name": "Prélude à l’après-midi d’un faune",
+          "durationMs": 240000
         }
       ]
     }

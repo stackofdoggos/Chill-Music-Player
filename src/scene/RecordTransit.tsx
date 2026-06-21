@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
-import { useStore, selectedAlbum, dragActiveOrRecent, PHASE_DURATION } from '../state/store'
+import { useStore, platterAlbum, dragActiveOrRecent, PHASE_DURATION } from '../state/store'
 import { engine } from '../audio/engine'
 import { Vinyl } from './Shelf/Vinyl'
 import { SLEEVE_OUT_POS, VINYL_REST, easeInOutCubic } from './layout'
@@ -22,7 +22,7 @@ export function RecordTransit() {
   const group = useRef<THREE.Group>(null)
   const phase = useStore((s) => s.recordPhase)
   const phaseStart = useStore((s) => s.phaseStart)
-  const album = useStore(selectedAlbum)
+  const album = useStore(platterAlbum)
   const needle = useStore((s) => s.needle)
   const [hover, setHover] = useState(false)
   const placedSfx = useRef(false)
@@ -47,13 +47,13 @@ export function RecordTransit() {
   useEffect(() => {
     if (phase === 'toPlatter') {
       placedSfx.current = false
-      engine.loadAlbum(useStore.getState().albums.find((a) => a.id === useStore.getState().selectedAlbumId) ?? null)
+      engine.loadAlbum(platterAlbum(useStore.getState()))
       engine.playSfx('vinylOut', 0.9)
     } else if (phase === 'returning') {
       engine.loadAlbum(null)
       engine.playSfx('vinylOut', 0.5, 1.1)
     } else if (phase === 'none' && prevPhase.current === 'returning') {
-      engine.playSfx('sleeveIn', 0.7)
+      engine.playSfx('sleeveIn', 0.85, 1.05)
     }
     prevPhase.current = phase
   }, [phase])
