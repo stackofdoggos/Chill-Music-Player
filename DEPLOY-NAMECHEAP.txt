@@ -1,0 +1,17 @@
+Namecheap deploy — Chill Music Player
+======================================
+
+This zip contains a "music" folder. Extract it into your web root (public_html).
+
+1. Namecheap → Hosting → cPanel → File Manager
+2. Open public_html (folder for milesaguilar.com)
+3. Upload music-deploy.zip
+4. Select the zip → Extract
+5. Confirm: public_html/music/index.html exists
+
+Live URL: https://milesaguilar.com/music/
+
+Large upload (~495 MB zip): if cPanel upload fails, use FTP/SFTP
+  to public_html/music/ with the same folder contents.
+
+No API keys or env files — static site only.

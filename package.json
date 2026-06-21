@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check-deploy": "node scripts/check-deploy.mjs",
     "preview": "vite preview",
+    "preview:music": "vite preview --open /music/",
     "fetch-albums": "node scripts/fetch-albums.mjs"
   },
   "dependencies": {

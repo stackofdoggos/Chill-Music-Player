@@ -1,3 +1,5 @@
+import { assetUrl } from './assetUrl'
+
 export interface Track {
   file: string
   name: string
@@ -39,7 +41,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 export async function loadAlbums(onProgress: (done: number, total: number) => void): Promise<Album[]> {
   let raw: Omit<Album, 'coverImg'>[]
   try {
-    const res = await fetch('/albums/manifest.json', { cache: 'no-store' })
+    const res = await fetch(assetUrl('albums/manifest.json'), { cache: 'no-store' })
     const json = await res.json()
     raw = json.albums?.length ? json.albums : PLACEHOLDERS
   } catch {
@@ -49,7 +51,7 @@ export async function loadAlbums(onProgress: (done: number, total: number) => vo
   onProgress(0, raw.length)
   return Promise.all(
     raw.map(async (a) => {
-      const coverImg = a.cover ? await loadImage(a.cover) : null
+      const coverImg = a.cover ? await loadImage(assetUrl(a.cover)) : null
       onProgress(++done, raw.length)
       return { ...a, coverImg }
     }),
@@ -57,5 +59,5 @@ export async function loadAlbums(onProgress: (done: number, total: number) => vo
 }
 
 export function trackUrl(album: Album, index: number): string {
-  return `/albums/${album.id}/${album.tracks[index].file}`
+  return assetUrl(`albums/${album.id}/${album.tracks[index].file}`)
 }

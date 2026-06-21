@@ -1,5 +1,6 @@
-/**
- * Mix of sampled foley (`public/sfx/`) and procedural one-shots.
+import { assetUrl } from '../assetUrl'
+
+/** Mix of sampled foley (`public/sfx/`) and procedural one-shots.
  * Built after the user gesture creates the AudioContext.
  */
 
@@ -111,7 +112,7 @@ function swish(data: Float32Array, sr: number, dur: number, amp: number, lpAlpha
 }
 
 async function loadSample(ctx: AudioContext, spec: SampleSpec): Promise<AudioBuffer> {
-  return normalizePeak(await decodeSample(ctx, `/sfx/${spec.file}`), spec.peak)
+  return normalizePeak(await decodeSample(ctx, assetUrl(`sfx/${spec.file}`)), spec.peak)
 }
 
 function buildProcedural(ctx: AudioContext): Pick<Buffers, 'needleLift' | 'knobTick' | 'recordPlace' | 'lid'> {

@@ -2,6 +2,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 import { dragActiveOrRecent, useStore } from '../state/store'
+import { assetUrl } from '../assetUrl'
 import { WALL_ART } from './layout'
 
 const FRAME = { wood: '#3d362e', mat: '#ebe7e0', border: 0.02, matPad: 0.03, depth: 0.02 }
@@ -56,7 +57,7 @@ function FramedArt({
 export function WallArt() {
   return (
     <FramedArt
-      src="/art/de-hooch-musical-company.jpg"
+      src={assetUrl('art/de-hooch-musical-company.jpg')}
       position={[WALL_ART.x, WALL_ART.y, WALL_ART.z]}
       width={WALL_ART.width}
     />

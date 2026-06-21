@@ -1,6 +1,6 @@
 # Sound effects credits
 
-User-provided recordings:
+Project recordings:
 - `sleeve-out.mp3` — pull record from shelf
 - `sleeve-in.mp3` — return record to shelf
 
