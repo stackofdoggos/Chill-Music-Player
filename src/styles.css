@@ -232,3 +232,95 @@ body,
 .hint--visible {
   opacity: 1;
 }
+
+/* ---------- day-night dev slider ---------- */
+.daynight {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 10;
+  width: 200px;
+  padding: 12px 14px 10px;
+  border-radius: 10px;
+  background: rgba(245, 242, 236, 0.82);
+  border: 1px solid #d4d0c8;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.daynight__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.daynight__title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8a857c;
+}
+
+.daynight__label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #a3552c;
+  text-align: right;
+}
+
+.daynight__track-wrap {
+  position: relative;
+  height: 18px;
+}
+
+.daynight__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    #1a2030 0%,
+    #8a9ab8 18%,
+    #e8e4dc 42%,
+    #ffb050 65%,
+    #c85830 76%,
+    #3a4058 90%,
+    #1a2030 100%
+  );
+  opacity: 0.85;
+}
+
+.daynight__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+}
+
+.daynight__input::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #2b2926;
+  border: 2px solid #f5f2ec;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.daynight__input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #2b2926;
+  border: 2px solid #f5f2ec;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}

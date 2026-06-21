@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Experience } from './scene/Experience'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { NowPlaying } from './ui/NowPlaying'
+import { DayNightSlider } from './ui/DayNightSlider'
 import { loadAlbums } from './albums'
 import { requestUnfocus, useStore } from './state/store'
 import { engine } from './audio/engine'
@@ -108,6 +109,7 @@ export default function App() {
         />
       )}
       {entered && <NowPlaying />}
+      {entered && <DayNightSlider />}
     </>
   )
 }

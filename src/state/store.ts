@@ -31,6 +31,8 @@ export interface State {
   hint: string | null
   lidOpen: boolean
   hoveredAlbumId: string | null
+  /** 0–1 day-night cycle for natural window lighting (dev slider) */
+  dayPhase: number
 
   setAlbums: (albums: Album[]) => void
   setView: (v: View) => void
@@ -52,6 +54,7 @@ export interface State {
   setNowPlayingTrack: (i: number) => void
   setHint: (h: string | null) => void
   setLid: (open: boolean) => void
+  setDayPhase: (phase: number) => void
 }
 
 let phaseTimer: ReturnType<typeof setTimeout> | undefined
@@ -90,6 +93,7 @@ export const useStore = create<State>((set, get) => ({
   hint: null,
   lidOpen: false,
   hoveredAlbumId: null,
+  dayPhase: 0.65,
 
   setAlbums: (albums) => set({ albums }),
   setView: (view) => set({ view, hoveredAlbumId: view === 'shelf' ? get().hoveredAlbumId : null }),
@@ -199,6 +203,7 @@ export const useStore = create<State>((set, get) => ({
   setNowPlayingTrack: (nowPlayingTrack) => set({ nowPlayingTrack }),
   setHint: (hint) => set({ hint }),
   setLid: (lidOpen) => set({ lidOpen }),
+  setDayPhase: (dayPhase) => set({ dayPhase: Math.min(1, Math.max(0, dayPhase)) }),
 }))
 
 export function selectedAlbum(s: State): Album | null {

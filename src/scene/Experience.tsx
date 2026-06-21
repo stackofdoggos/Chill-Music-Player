@@ -1,9 +1,10 @@
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import { requestUnfocus } from '../state/store'
+import { requestUnfocus, useStore } from '../state/store'
 import { engine } from '../audio/engine'
 import { STATIONS } from './layout'
+import { sampleAtmosphere } from './dayNight'
 import { Lighting } from './Lighting'
 import { Room } from './Room'
 import { CameraRig } from './CameraRig'
@@ -14,6 +15,27 @@ import { RecordTransit } from './RecordTransit'
 function EngineUpdater() {
   useFrame((_, dt) => engine.update(Math.min(dt, 0.1)))
   return null
+}
+
+function SceneBackground() {
+  const scene = useThree((s) => s.scene)
+  useFrame(() => {
+    const bg = sampleAtmosphere(useStore.getState().dayPhase).background
+    if (scene.background instanceof THREE.Color) scene.background.copy(bg)
+    else scene.background = bg.clone()
+  })
+  return null
+}
+
+function AtmospherePost() {
+  const dayPhase = useStore((s) => s.dayPhase)
+  const a = sampleAtmosphere(dayPhase)
+  return (
+    <EffectComposer multisampling={4}>
+      <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
+      <Vignette eskil={false} offset={a.vignetteOffset} darkness={a.vignetteDarkness} />
+    </EffectComposer>
+  )
 }
 
 export function Experience() {
@@ -27,7 +49,7 @@ export function Experience() {
       }}
       onPointerMissed={() => requestUnfocus()}
     >
-      <color attach="background" args={['#e8e4dc']} />
+      <SceneBackground />
       <Lighting />
       <Room />
       <Player />
@@ -35,10 +57,7 @@ export function Experience() {
       <RecordTransit />
       <CameraRig />
       <EngineUpdater />
-      <EffectComposer multisampling={4}>
-        <Bloom intensity={0.18} luminanceThreshold={1.0} mipmapBlur />
-        <Vignette eskil={false} offset={0.22} darkness={0.42} />
-      </EffectComposer>
+      <AtmospherePost />
     </Canvas>
   )
 }

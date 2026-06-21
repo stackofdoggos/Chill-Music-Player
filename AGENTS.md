@@ -16,7 +16,9 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | File | Owns |
 | --- | --- |
 | `src/state/store.ts` | zustand store: `view`, `selectedAlbumId` (shelf browse), `platterAlbumId`, `shelfPhase` + `recordPhase`, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
+| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; dev slider in `src/ui/DayNightSlider.tsx`. |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
+| `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, crackle/hum layers, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
@@ -116,7 +118,8 @@ __engine.getProgress()                                   // should advance while
    captured object swallows every pointer event. The tonearm wraps capture/release in
    try/catch and explicitly calls `releasePointerCapture` in `onUp`. If clicks mysteriously
    stop hitting objects during automation, suspect a stale capture — reload the page.
-11. **Raycast diagnosis.** `window.__hits(clientX, clientY)` (dev only) lists the first 8
+11. **ContactShadows are top-down and expensive.** drei's `ContactShadows` re-renders the whole scene every frame from a fixed overhead camera — shadows never sweep with a directional sun, and `frames={Infinity}` causes 50–100ms rAF spikes. Use `directionalLight castShadow` only; `DirectionalLight.target` must be `scene.add(target)`.
+12. **Raycast diagnosis.** `window.__hits(clientX, clientY)` (dev only) lists the first 8
    intersections at a screen point, nearest first — use it whenever a click "does nothing".
    Note it ignores `visible=false` differences from r3f's raycaster; named meshes
    (`arm-base`, `arm-pivot-column`) read clearest.
