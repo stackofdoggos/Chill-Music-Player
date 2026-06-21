@@ -17,9 +17,6 @@ export function LoadingScreen({ progress, status, ready, entered, onEnter, onDis
     >
       <div className="loading__inner">
         <h1 className="loading__title">A Record Room</h1>
-        <p className="loading__sub">
-          Less, but better — pull an album from the shelf, set the needle, listen.
-        </p>
         <div className="loading__bar">
           <div className="loading__fill" style={{ transform: `scaleX(${progress})` }} />
         </div>

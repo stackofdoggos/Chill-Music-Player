@@ -71,14 +71,6 @@ body,
   font-weight: 500;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.loading__sub {
-  font-size: 13px;
-  font-weight: 400;
-  color: #8a857c;
-  line-height: 1.5;
   margin-bottom: 22px;
 }
 
