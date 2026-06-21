@@ -8,7 +8,7 @@ const MIN_AUDIBLE_RATE = 0.3 // below this we pause the media element
 
 /**
  * Singleton audio engine. Owns the AudioContext, the music graph
- * (media element -> vinyl EQ -> gain -> master) plus crackle/hum loops and
+ * (media element -> vinyl EQ -> gain -> master) plus crackle loop and
  * one-shot SFX. Also models the platter: `rate` is the current platter speed
  * as a fraction of nominal 33rpm, and the media playbackRate follows it so
  * spin-up/down produces a real pitch bend (preservesPitch = false).
@@ -20,7 +20,6 @@ class AudioEngine {
   private musicIn!: BiquadFilterNode
   private crackleGain!: GainNode
   private crackleSrc!: AudioBufferSourceNode
-  private humGain!: GainNode
   private sfx!: Awaited<ReturnType<typeof buildSfx>>
   private el: HTMLAudioElement | null = null
 
@@ -47,6 +46,17 @@ class AudioEngine {
 
   get ready() {
     return this.ctx !== null
+  }
+
+  /** Needle in the groove, power on, platter at audible speed. */
+  isPlaying() {
+    return (
+      this.needleDown &&
+      this.powered &&
+      this.rate >= MIN_AUDIBLE_RATE &&
+      this.el !== null &&
+      !this.el.paused
+    )
   }
 
   init() {
@@ -88,15 +98,6 @@ class AudioEngine {
     this.crackleSrc.loop = true
     this.crackleSrc.connect(this.crackleGain)
     this.crackleSrc.start()
-
-    this.humGain = ctx.createGain()
-    this.humGain.gain.value = 0
-    this.humGain.connect(this.master)
-    const hum = ctx.createBufferSource()
-    hum.buffer = this.sfx.humLoop
-    hum.loop = true
-    hum.connect(this.humGain)
-    hum.start()
 
     const el = new Audio()
     el.preload = 'auto'
@@ -298,7 +299,6 @@ class AudioEngine {
     this.powered = on
     this.targetRate = on ? this.speedFactor : 0
     this.playSfx(on ? 'switchOn' : 'switchOff', 0.7)
-    if (this.ctx) this.rampGain(this.humGain, on ? 0.05 : 0, on ? 0.5 : 1.2)
   }
 
   setSpeed(s: 33 | 45) {

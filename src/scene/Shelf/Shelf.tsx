@@ -105,11 +105,11 @@ export function Shelf() {
       <group
         position={[
           lastSlot.x + SLEEVE.thickness / 2 + 0.012,
-          SHELF.shelfY[1] + 0.018,
-          -2.0,
+          SHELF.shelfY[1] + 0.009,
+          lastSlot.z,
         ]}
       >
-        <mesh castShadow onClick={onShelfBackdrop}>
+        <mesh position-y={0.08} castShadow onClick={onShelfBackdrop}>
           <boxGeometry args={[0.006, 0.16, 0.13]} />
           <meshStandardMaterial
             color="#9a9896"
@@ -117,7 +117,7 @@ export function Shelf() {
             roughness={0.3}
           />
         </mesh>
-        <mesh position={[-0.035, -0.075, 0]} onClick={onShelfBackdrop}>
+        <mesh position={[-0.035, 0.002, 0]} onClick={onShelfBackdrop}>
           <boxGeometry args={[0.075, 0.004, 0.13]} />
           <meshStandardMaterial
             color="#9a9896"

@@ -19,7 +19,7 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; dev slider in `src/ui/DayNightSlider.tsx`. |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
-| `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, crackle/hum layers, SFX playback, needle drop/seek logic. |
+| `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, crackle layer, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
 | `src/scene/Player/*` | Chassis, platter, tonearm (drag → groove radius → seek), knobs, acrylic lid. |

@@ -15,7 +15,7 @@ export type SfxName =
   | 'recordPlace'
   | 'lid'
 
-type LoopName = 'crackleLoop' | 'humLoop'
+type LoopName = 'crackleLoop'
 type Buffers = Record<SfxName, AudioBuffer> & Record<LoopName, AudioBuffer>
 
 type SampleSpec = { file: string; peak: number }
@@ -28,7 +28,6 @@ const SAMPLES: Record<Exclude<SfxName, 'needleLift' | 'knobTick' | 'recordPlace'
   sleeveIn: { file: 'sleeve-in.mp3', peak: 0.75 },
   vinylOut: { file: 'vinyl-out.mp3', peak: 0.75 },
   crackleLoop: { file: 'crackle-loop.mp3', peak: 0.2 },
-  humLoop: { file: 'hum-loop.mp3', peak: 0.35 },
 }
 
 async function decodeSample(ctx: AudioContext, url: string): Promise<AudioBuffer> {

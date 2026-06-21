@@ -3,6 +3,7 @@ import { Experience } from './scene/Experience'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { NowPlaying } from './ui/NowPlaying'
 import { DayNightSlider } from './ui/DayNightSlider'
+import { VinylFavicon } from './ui/Favicon'
 import { loadAlbums } from './albums'
 import { requestUnfocus, useStore } from './state/store'
 import { engine } from './audio/engine'
@@ -93,6 +94,7 @@ export default function App() {
 
   return (
     <>
+      <VinylFavicon />
       {ready && (
         <div className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}`}>
           <Experience />
