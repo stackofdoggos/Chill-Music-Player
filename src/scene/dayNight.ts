@@ -404,6 +404,23 @@ export function sampleAtmosphere(phase: number, out = scratch): Atmosphere {
   return lerpRaw(a, b, local, out)
 }
 
+export type PhaseMark = { t: number; label: string }
+
+/** Keyframe positions for the day-night slider ticks (excludes duplicate night at t=1). */
+export function phaseMarks(): PhaseMark[] {
+  return KEYFRAMES.slice(0, -1).map(({ t, label }) => ({ t, label }))
+}
+
+/** CSS linear-gradient stops sampled from atmosphere keyframe backgrounds. */
+export function phaseTrackGradient(): string {
+  return KEYFRAMES.map((kf) => `${kf.background} ${(kf.t * 100).toFixed(2)}%`).join(', ')
+}
+
+/** Accent color for slider chrome — window glow at the current phase. */
+export function phaseAccentHex(phase: number): string {
+  return `#${sampleAtmosphere(phase).windowEmissive.getHexString()}`
+}
+
 /** Label for the nearest keyframe — used by the dev slider. */
 export function phaseLabel(phase: number): string {
   const t = ((phase % 1) + 1) % 1

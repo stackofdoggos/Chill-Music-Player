@@ -19,19 +19,22 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; dev slider in `src/ui/DayNightSlider.tsx`. |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
-| `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, crackle layer, SFX playback, needle drop/seek logic. |
+| `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
 | `src/scene/Player/*` | Chassis, platter, tonearm (drag → groove radius → seek), knobs, acrylic lid. |
-| `src/scene/Shelf/*` | 606 shelf, album sleeves (canvas textures from cover art), vinyl disc mesh. |
+| `src/scene/Shelf/*` | Freestanding walnut bookcase: interactive albums face-forward on the top two shelves (4 + up to 4, leaning against the back panel), decorative spine row on the middle shelf, two wicker record bins on the floor below. Also album sleeves (canvas textures from cover art) and the vinyl disc mesh. |
 | `scripts/fetch-albums.mjs` | yt-dlp + iTunes pipeline that builds `public/albums/` + `manifest.json`. |
 
 State machine: `shelfPhase`: `none → pullingOut → out` (browsing covers on the shelf, independent of the platter).
 `recordPhase`: `none → toPlatter → onPlatter → returning → none` (vinyl on the player). `platterAlbumId` tracks which album is on the platter; `selectedAlbumId` is which sleeve is pulled out. While `onPlatter`, users can still pull out other sleeves to browse — `placeRecord` alone shows the return-first hint.
 Views: `overview | shelf | player | volume (knob close-up) | arm (top-down tonearm) | art (painting close-up)`.
 Shelf keyboard (when `view === 'shelf'`): `F` flips the pulled-out sleeve; `P` puts it back, pulls
-out the hovered spine, or swaps to a hovered spine while inspecting. `hoveredAlbumId` tracks the
-spine under the cursor for both `P` and the bottom-left control hints (`src/ui/controlHints.ts`).
+out the hovered sleeve, or swaps to a hovered sleeve while inspecting. `hoveredAlbumId` tracks the
+sleeve under the cursor for both `P` and the bottom-left control hints (`src/ui/controlHints.ts`).
+Sleeve pull-out/return is staged in `AlbumSleeve.tsx` (slide straight out past `SHELF_FRONT_Z`
+before gliding to `SLEEVE_OUT_POS`, and re-align before sliding back in) so covers never clip
+through the shelf boards above them.
 Unfocus order: `volume/arm → player`, `player/shelf → overview` (see `BACK` in store).
 Entering the precision views: click the volume knob → `volume` (drag or arrow keys adjust);
 click the tonearm bearing base/pivot column → `arm` (top-down); clicking the base again, the
@@ -70,7 +73,7 @@ Typical test flow (wait ~2s between steps for camera/phase animations):
 
 ```js
 // audio requires a user gesture: click the "Enter — sound on" button first (it has an a11y ref)
-p = __proj(0.71, 1.33, -1.835); __click(...p)          // click first spine (walks to shelf, then selects)
+p = __proj(0.586, 1.5, -2.13); __click(...p)           // click first cover, top-left (walks to shelf + pulls it out)
 p = __proj(...SLEEVE_OUT_POS); __click(...p)            // place record (see layout.ts for current value)
 p = __proj(-0.81, 0.7975, -1.58); __click(...p)         // power switch
 g = __proj(-0.7635, 0.9, -1.7605); d = __proj(-0.88, 0.9, -1.64); await __drag(...g, ...d) // drop needle

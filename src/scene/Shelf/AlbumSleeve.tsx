@@ -8,7 +8,15 @@ import type { Album } from '../../albums'
 import { dragActiveOrRecent, markDragEnd, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
 import { sleeveTextures } from '../textures'
-import { SLEEVE, SLEEVE_OUT_POS, SLEEVE_OUT_ROT_Y, sleeveSlot } from '../layout'
+import {
+  SHELF_FRONT_Z,
+  SLEEVE,
+  SLEEVE_LEAN,
+  SLEEVE_OUT_POS,
+  SLEEVE_OUT_ROT_Y,
+  SLEEVE_SHELF_ROT_Y,
+  sleeveSlot,
+} from '../layout'
 
 const FLIP_DRAG_PX = 180
 
@@ -112,17 +120,36 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
 
   useFrame((_, dt) => {
     if (!outer.current || !pose.current || !hinge.current) return
+    const p = outer.current.position
     if (isOut) {
-      easing.damp3(outer.current.position, SLEEVE_OUT_POS, 0.28, dt)
-      pose.current.rotation.y = SLEEVE_OUT_ROT_Y
-    } else {
+      // slide straight out of the compartment first, then glide to the out pose
+      const cleared = p.z > SHELF_FRONT_Z + 0.05
       easing.damp3(
-        outer.current.position,
-        [slot.x, slot.y, slot.z + (hover && !selected ? 0.028 : 0)],
+        p,
+        cleared ? SLEEVE_OUT_POS : [slot.x, slot.y, SLEEVE_OUT_POS.z],
+        0.28,
+        dt,
+      )
+      pose.current.rotation.y = SLEEVE_OUT_ROT_Y
+      easing.damp(pose.current.rotation, 'x', 0, 0.22, dt)
+    } else {
+      // returning: line up with the slot while still in front, then slide in
+      const aligned =
+        Math.abs(p.x - slot.x) < 0.02 && Math.abs(p.y - slot.y) < 0.02
+      easing.damp3(
+        p,
+        [
+          slot.x,
+          slot.y,
+          aligned
+            ? slot.z + (hover && !selected ? 0.028 : 0)
+            : SLEEVE_OUT_POS.z,
+        ],
         0.22,
         dt,
       )
-      pose.current.rotation.y = 0
+      pose.current.rotation.y = SLEEVE_SHELF_ROT_Y
+      easing.damp(pose.current.rotation, 'x', -SLEEVE_LEAN, 0.22, dt)
     }
 
     const goal = canFlip ? (sleeveSide === 'back' ? Math.PI : 0) : 0

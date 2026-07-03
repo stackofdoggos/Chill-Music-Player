@@ -83,33 +83,38 @@ export function radiusToProgress(r: number): number {
   );
 }
 
-// ---------------- shelf ----------------
+// ---------------- shelf (freestanding walnut bookcase) ----------------
 export const SHELF = {
   x: 1.1,
   wallZ: ROOM.backZ,
-  shelfY: [0.78, 1.16, 1.66],
-  w: 1.16,
-  d: 0.3,
-  uprightX: [0.55, 1.65],
+  w: 1.46,
+  d: 0.34,
+  sideT: 0.045, // thick side panels
+  boardT: 0.022, // shelf board thickness
+  backT: 0.018, // back panel thickness
+  footH: 0.05,
+  /** shelf board centre heights, bottom → top (wicker bins live below boardY[0]) */
+  boardY: [0.481, 0.911, 1.331],
+  topBoardY: 1.751,
+  sideTopY: 1.8, // side panels rise slightly above the top board
 };
 
 export const SLEEVE = { size: 0.315, thickness: 0.0145 };
 
-/** invisible click target: shelf column on the back wall (uprights + all shelves) */
-export const SHELF_FOCUS = {
-  x: SHELF.x,
-  y: 1.3,
-  z: SHELF.wallZ + 0.011,
-  w: SHELF.w + 0.12,
-  h: 2.15,
-};
+/** backward lean of the face-forward sleeves resting against the back panel */
+export const SLEEVE_LEAN = 0.13;
+/** slot pose faces the front cover (+x face) toward the camera (+z) */
+export const SLEEVE_SHELF_ROT_Y = -Math.PI / 2;
+
+/** inner face of the back panel (sleeves lean against this) */
+export const SHELF_BACK_INNER_Z = SHELF.wallZ + 0.012 + SHELF.backT;
+/** front face of the bookcase; sleeves are staged past this while pulling out */
+export const SHELF_FRONT_Z = SHELF.wallZ + SHELF.d;
 
 export function isShelfFocusPoint(x: number, y: number): boolean {
   const x0 = SHELF.x - SHELF.w / 2 - 0.06;
   const x1 = SHELF.x + SHELF.w / 2 + 0.06;
-  const y0 = SHELF.shelfY[0] - 0.25;
-  const y1 = SHELF.shelfY[2] + SLEEVE.size / 2 + 0.2;
-  return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+  return x >= x0 && x <= x1 && y >= 0.2 && y <= SHELF.sideTopY + 0.15;
 }
 
 /** framed landscape art above the record player on the back wall */
@@ -120,11 +125,25 @@ export const WALL_ART = {
   width: 0.96,
 };
 
+/**
+ * Face-forward display slots on the top two shelves, 4 per row, filling the
+ * top row first. Sleeves lean back against the back panel like gallery covers.
+ */
 export function sleeveSlot(i: number): THREE.Vector3 {
+  const PER_ROW = 4;
+  const row = Math.floor(i / PER_ROW); // 0 = top shelf, 1 = shelf below
+  const col = i % PER_ROW;
+  const innerX0 = SHELF.x - SHELF.w / 2 + SHELF.sideT;
+  const innerW = SHELF.w - 2 * SHELF.sideT;
+  const spacing = innerW / PER_ROW;
+  const boardTop =
+    (row === 0 ? SHELF.boardY[2] : SHELF.boardY[1]) + SHELF.boardT / 2;
+  const half = SLEEVE.size / 2;
+  const halfT = SLEEVE.thickness / 2;
   return V3(
-    0.71 + i * (SLEEVE.thickness + 0.004),
-    SHELF.shelfY[1] + 0.009 + SLEEVE.size / 2,
-    -1.99,
+    innerX0 + spacing * (col + 0.5),
+    boardTop + half * Math.cos(SLEEVE_LEAN) + halfT * Math.sin(SLEEVE_LEAN),
+    SHELF_BACK_INNER_Z + half * Math.sin(SLEEVE_LEAN) + halfT * Math.cos(SLEEVE_LEAN),
   );
 }
 
@@ -140,7 +159,7 @@ export const STATIONS: Record<
   // zoomed to feel close while the desk legs stay at the bottom of frame
   overview: { pos: V3(0.25, 1.36, 1.55), target: V3(0.1, 0.98, -2.0) },
   player: { pos: V3(-0.86, 1.46, -0.58), target: V3(-0.9, 0.84, -1.78) },
-  shelf: { pos: V3(0.78, 1.36, -0.85), target: V3(0.78, 1.3, -2.05) },
+  shelf: { pos: V3(1.1, 1.45, -0.52), target: V3(1.1, 1.28, -2.05) },
   // close-up on the volume knob (front face of the chassis)
   volume: { pos: V3(-0.665, 0.875, -1.31), target: V3(-0.665, 0.797, -1.58) },
   // almost straight above the deck, for precise tonearm placement

@@ -66,16 +66,26 @@ body,
   transform: translateY(-10px) scale(0.985);
 }
 
+.loading__head {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 .loading__title {
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .loading__bar {
   height: 1px;
+  width: 100%;
   background: #d4d0c8;
   margin-bottom: 18px;
   overflow: hidden;
@@ -225,66 +235,127 @@ body,
   opacity: 1;
 }
 
-/* ---------- day-night dev slider ---------- */
+/* ---------- day-night slider ---------- */
 .daynight {
   position: fixed;
   right: 28px;
   bottom: 24px;
   z-index: 10;
-  width: 200px;
-  padding: 12px 14px 10px;
-  border-radius: 10px;
-  background: rgba(245, 242, 236, 0.82);
-  border: 1px solid #d4d0c8;
-  backdrop-filter: blur(8px);
+  width: 272px;
+  padding: 14px 16px 13px;
+  border-radius: 12px;
+  background: rgba(245, 242, 236, 0.78);
+  border: 1px solid rgba(200, 196, 188, 0.9);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 10px 36px rgba(43, 41, 38, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   pointer-events: auto;
+  --daynight-thumb-half: 1.5px;
 }
 
 .daynight__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .daynight__title {
   font-size: 10px;
-  letter-spacing: 0.2em;
+  font-weight: 500;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: #8a857c;
 }
 
 .daynight__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #a3552c;
+  letter-spacing: 0.08em;
+  color: #2b2926;
   text-align: right;
+  transition: color 0.35s ease;
+}
+
+.daynight__swatch {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--daynight-accent, #a3552c);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 0 10px color-mix(in srgb, var(--daynight-accent, #a3552c) 55%, transparent);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.daynight__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.daynight__icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: #b0aaa0;
 }
 
 .daynight__track-wrap {
   position: relative;
+  flex: 1;
   height: 18px;
+}
+
+.daynight__channel {
+  position: absolute;
+  left: var(--daynight-thumb-half);
+  right: var(--daynight-thumb-half);
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(43, 41, 38, 0.14);
 }
 
 .daynight__track {
   position: absolute;
+  inset: 0;
+  background: var(--daynight-track);
+  opacity: 0.92;
+}
+
+.daynight__fill {
+  position: absolute;
+  top: 0;
   left: 0;
-  right: 0;
-  top: 7px;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(
-    90deg,
-    #1a2030 0%,
-    #8a9ab8 18%,
-    #e8e4dc 42%,
-    #ffb050 65%,
-    #c85830 76%,
-    #3a4058 90%,
-    #1a2030 100%
-  );
-  opacity: 0.85;
+  bottom: 0;
+  width: var(--daynight-fill, 0%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  transition: width 0.08s linear;
+}
+
+.daynight__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.daynight__tick {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 10px;
+  background: rgba(43, 41, 38, 0.16);
+  transform: translate(-50%, -50%);
 }
 
 .daynight__input {
@@ -298,21 +369,52 @@ body,
   background: transparent;
 }
 
+.daynight__input:focus-visible {
+  outline: none;
+}
+
+.daynight__input:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px #f5f2ec,
+    0 0 0 4px rgba(43, 41, 38, 0.28),
+    0 0 14px color-mix(in srgb, var(--daynight-accent, #a3552c) 65%, transparent);
+}
+
+.daynight__input::-webkit-slider-runnable-track {
+  height: 18px;
+  background: transparent;
+}
+
 .daynight__input::-webkit-slider-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  width: 3px;
+  height: 18px;
+  margin-top: 0;
+  border-radius: 1px;
   background: #2b2926;
-  border: 2px solid #f5f2ec;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  border: none;
+  box-shadow:
+    0 0 0 2px #f5f2ec,
+    0 0 14px color-mix(in srgb, var(--daynight-accent, #a3552c) 55%, transparent);
+  transition: box-shadow 0.35s ease, transform 0.15s ease;
+}
+
+.daynight__input:active::-webkit-slider-thumb {
+  transform: scaleY(1.08);
+}
+
+.daynight__input::-moz-range-track {
+  height: 18px;
+  background: transparent;
+  border: none;
 }
 
 .daynight__input::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  width: 3px;
+  height: 18px;
+  border-radius: 1px;
   background: #2b2926;
   border: 2px solid #f5f2ec;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--daynight-accent, #a3552c) 55%, transparent);
+  transition: box-shadow 0.35s ease;
 }

@@ -16,9 +16,11 @@ export function LoadingScreen({ progress, status, ready, entered, onEnter, onDis
       }}
     >
       <div className="loading__inner">
-        <h1 className="loading__title">A Record Room</h1>
-        <div className="loading__bar">
-          <div className="loading__fill" style={{ transform: `scaleX(${progress})` }} />
+        <div className="loading__head">
+          <h1 className="loading__title">A Record Room</h1>
+          <div className="loading__bar">
+            <div className="loading__fill" style={{ transform: `scaleX(${progress})` }} />
+          </div>
         </div>
         <p className="loading__status" aria-live="polite">
           {ready ? 'Ready' : status}

@@ -1,8 +1,28 @@
+import { useMemo } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import * as THREE from "three";
 import { dragActiveOrRecent, useStore } from "../../state/store";
 import { engine } from "../../audio/engine";
-import { SHELF, SHELF_FOCUS, SLEEVE, sleeveSlot } from "../layout";
+import { woodTexture } from "../textures";
+import { SHELF, SHELF_BACK_INNER_Z, SLEEVE } from "../layout";
 import { AlbumSleeve } from "./AlbumSleeve";
+
+/** deterministic PRNG so the decorative records/bins never reshuffle */
+function mulberry32(a: number) {
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SPINE_PALETTE = [
+  "#8a8074", "#6b5d4f", "#3e3a36", "#a39482", "#5c6470", "#7d6b5a",
+  "#494540", "#94867a", "#665d52", "#8f7f6e", "#3a4350", "#7a4a3a",
+  "#b0a390", "#55503f", "#274a43", "#8c3b2e",
+];
 
 function Plant({ position, onClick }: { position: [number, number, number]; onClick: (e: ThreeEvent<MouseEvent>) => void }) {
   const leaves = [
@@ -30,8 +50,135 @@ function Plant({ position, onClick }: { position: [number, number, number]; onCl
   );
 }
 
+/** dense row of decorative record spines packed on the middle shelf */
+function SpineRow({ onClick }: { onClick: (e: ThreeEvent<MouseEvent>) => void }) {
+  const records = useMemo(() => {
+    const rnd = mulberry32(20260703);
+    const out: { x: number; w: number; h: number; z: number; color: string }[] = [];
+    const x0 = SHELF.x - SHELF.w / 2 + SHELF.sideT + 0.012;
+    const x1 = SHELF.x + SHELF.w / 2 - SHELF.sideT - 0.012;
+    let x = x0;
+    while (x < x1) {
+      const w = 0.009 + rnd() * 0.011;
+      if (x + w > x1) break;
+      out.push({
+        x: x + w / 2,
+        w,
+        h: 0.29 + rnd() * 0.024,
+        z: SHELF_BACK_INNER_Z + 0.15 + (rnd() - 0.5) * 0.014,
+        color: SPINE_PALETTE[Math.floor(rnd() * SPINE_PALETTE.length)],
+      });
+      x += w + 0.0015;
+    }
+    return out;
+  }, []);
+
+  const baseY = SHELF.boardY[0] + SHELF.boardT / 2;
+  return (
+    <group>
+      {records.map((r, i) => (
+        <mesh key={i} position={[r.x, baseY + r.h / 2, r.z]} castShadow onClick={onClick}>
+          <boxGeometry args={[r.w, r.h, 0.3]} />
+          <meshStandardMaterial color={r.color} roughness={0.75} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** woven basket built from stacked square hoops, filled with record sleeves */
+function Basket({
+  position,
+  seed,
+  onClick,
+}: {
+  position: [number, number, number];
+  seed: number;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
+}) {
+  const W = 0.42;
+  const D = 0.3;
+  const H = 0.3;
+  const HOOPS = 6;
+  const hoopH = H / HOOPS;
+
+  const records = useMemo(() => {
+    const rnd = mulberry32(seed);
+    const out: { z: number; tilt: number; color: string }[] = [];
+    let z = -D / 2 + 0.05;
+    while (z < D / 2 - 0.03) {
+      out.push({
+        z,
+        tilt: (rnd() - 0.5) * 0.12,
+        color: SPINE_PALETTE[Math.floor(rnd() * SPINE_PALETTE.length)],
+      });
+      z += 0.02 + rnd() * 0.014;
+    }
+    return out;
+  }, [seed]);
+
+  return (
+    <group position={position}>
+      {/* records standing inside, tops peeking over the rim */}
+      {records.map((r, i) => (
+        <mesh
+          key={i}
+          position={[0, SLEEVE.size / 2 + 0.055, r.z]}
+          rotation-x={r.tilt}
+          castShadow
+          onClick={onClick}
+        >
+          <boxGeometry args={[0.3, SLEEVE.size, 0.012]} />
+          <meshStandardMaterial color={r.color} roughness={0.75} />
+        </mesh>
+      ))}
+      {/* dark interior filler hides the hollow between hoops and records */}
+      <mesh position={[0, H / 2 - 0.03, 0]} onClick={onClick}>
+        <boxGeometry args={[W - 0.05, H - 0.08, D - 0.05]} />
+        <meshStandardMaterial color="#3a2c1e" roughness={1} />
+      </mesh>
+      {/* woven walls: stacked, slightly tapered square hoops */}
+      {Array.from({ length: HOOPS }, (_, i) => {
+        const t = i / (HOOPS - 1);
+        const scale = 0.93 + 0.07 * t;
+        return (
+          <mesh
+            key={i}
+            position={[0, hoopH * (i + 0.5), 0]}
+            rotation-y={Math.PI / 4}
+            scale={[scale, 1, (scale * D) / W]}
+            castShadow
+            onClick={onClick}
+          >
+            <cylinderGeometry args={[W / Math.SQRT2, (W / Math.SQRT2) * 0.985, hoopH - 0.003, 4]} />
+            <meshStandardMaterial
+              color={i % 2 === 0 ? "#b98d5f" : "#a97e52"}
+              roughness={0.85}
+            />
+          </mesh>
+        );
+      })}
+      {/* rim */}
+      <mesh position={[0, H + 0.008, 0]} rotation-y={Math.PI / 4} scale={[1.02, 1, (1.02 * D) / W]} castShadow onClick={onClick}>
+        <cylinderGeometry args={[W / Math.SQRT2, W / Math.SQRT2, 0.022, 4]} />
+        <meshStandardMaterial color="#8f6a44" roughness={0.8} />
+      </mesh>
+      {/* handle cutout on the front face */}
+      <mesh position={[0, H * 0.62, D / 2 + 0.002]} onClick={onClick}>
+        <boxGeometry args={[0.09, 0.028, 0.006]} />
+        <meshStandardMaterial color="#241a12" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
 export function Shelf() {
   const albums = useStore((s) => s.albums);
+
+  const walnut = useMemo(() => {
+    const map = woodTexture(1.4, 1.4);
+    return new THREE.MeshStandardMaterial({ map, color: "#77604f", roughness: 0.6 });
+  }, []);
 
   const onShelfBackdrop = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -40,107 +187,79 @@ export function Shelf() {
     if (action === "putBack") engine.playSfx("sleeveIn", 0.85, 1.05);
   };
 
-  const lastSlot = sleeveSlot(Math.max(albums.length - 1, 0));
+  const { x, wallZ, w, d, sideT, boardT, backT, footH, boardY, topBoardY, sideTopY } = SHELF;
+  const zMid = wallZ + d / 2;
+  const sideH = sideTopY - footH;
+  const innerW = w - 2 * sideT;
 
   return (
     <group>
-      {/* back-wall click band behind the shelf (records in front still win the raycast) */}
-      <mesh position={[SHELF_FOCUS.x, SHELF_FOCUS.y, SHELF_FOCUS.z]} onClick={onShelfBackdrop}>
-        <planeGeometry args={[SHELF_FOCUS.w, SHELF_FOCUS.h]} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
-
-      {/* uprights (606-style E-tracks against the wall) */}
-      {SHELF.uprightX.map((x) => (
+      {/* side panels */}
+      {[-1, 1].map((s) => (
         <mesh
-          key={x}
-          position={[x, 1.25, SHELF.wallZ + 0.015]}
+          key={s}
+          position={[x + s * (w / 2 - sideT / 2), footH + sideH / 2, zMid]}
+          material={walnut}
           castShadow
+          receiveShadow
           onClick={onShelfBackdrop}
         >
-          <boxGeometry args={[0.024, 1.9, 0.024]} />
-          <meshStandardMaterial
-            color="#d8d6d2"
-            metalness={0.7}
-            roughness={0.35}
-          />
+          <boxGeometry args={[sideT, sideH, d]} />
         </mesh>
       ))}
-      {/* shelves */}
-      {SHELF.shelfY.map((y) => (
-        <group key={y}>
-          <mesh
-            position={[SHELF.x, y, SHELF.wallZ + 0.03 + SHELF.d / 2]}
-            castShadow
-            receiveShadow
-            onClick={onShelfBackdrop}
-          >
-            <boxGeometry args={[SHELF.w, 0.018, SHELF.d]} />
-            <meshStandardMaterial
-              color="#eceae6"
-              metalness={0.12}
-              roughness={0.5}
-            />
-          </mesh>
-          {/* slim support pins into the uprights */}
-          {SHELF.uprightX.map((x) => (
-            <mesh key={x} position={[x, y - 0.014, SHELF.wallZ + 0.05]}>
-              <boxGeometry args={[0.018, 0.01, 0.06]} />
-              <meshStandardMaterial
-                color="#c8c6c2"
-                metalness={0.7}
-                roughness={0.35}
-              />
-            </mesh>
-          ))}
-        </group>
+
+      {/* back panel */}
+      <mesh
+        position={[x, footH + sideH / 2, wallZ + 0.012 + backT / 2]}
+        material={walnut}
+        receiveShadow
+        onClick={onShelfBackdrop}
+      >
+        <boxGeometry args={[w - 2 * sideT + 0.02, sideH, backT]} />
+      </mesh>
+
+      {/* top board + three shelf boards */}
+      {[topBoardY, ...boardY].map((y) => (
+        <mesh
+          key={y}
+          position={[x, y, zMid]}
+          material={walnut}
+          castShadow
+          receiveShadow
+          onClick={onShelfBackdrop}
+        >
+          <boxGeometry args={[innerW + 0.02, boardT, d - 0.01]} />
+        </mesh>
       ))}
 
-      {/* the records */}
+      {/* feet */}
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh
+            key={`${sx}${sz}`}
+            position={[x + sx * (w / 2 - sideT / 2), footH / 2, zMid + sz * (d / 2 - 0.05)]}
+            castShadow
+            onClick={onShelfBackdrop}
+          >
+            <boxGeometry args={[0.05, footH, 0.05]} />
+            <meshStandardMaterial color="#211a14" roughness={0.6} />
+          </mesh>
+        )),
+      )}
+
+      {/* the interactive albums, face-forward on the top two shelves */}
       {albums.map((a, i) => (
         <AlbumSleeve key={a.id} album={a} index={i} />
       ))}
 
-      {/* bookend keeping the row upright */}
-      <group
-        position={[
-          lastSlot.x + SLEEVE.thickness / 2 + 0.012,
-          SHELF.shelfY[1] + 0.009,
-          lastSlot.z,
-        ]}
-      >
-        <mesh position-y={0.08} castShadow onClick={onShelfBackdrop}>
-          <boxGeometry args={[0.006, 0.16, 0.13]} />
-          <meshStandardMaterial
-            color="#9a9896"
-            metalness={0.8}
-            roughness={0.3}
-          />
-        </mesh>
-        <mesh position={[-0.035, 0.002, 0]} onClick={onShelfBackdrop}>
-          <boxGeometry args={[0.075, 0.004, 0.13]} />
-          <meshStandardMaterial
-            color="#9a9896"
-            metalness={0.8}
-            roughness={0.3}
-          />
-        </mesh>
-      </group>
+      {/* dense collection on the middle shelf */}
+      <SpineRow onClick={onShelfBackdrop} />
 
-      {/* a couple of sleeves lying flat on the bottom shelf */}
-      <group position={[1.37, SHELF.shelfY[0] + 0.018 + 0.015, -1.98]}>
-        {[0, 1].map((i) => (
-          <mesh key={i} position-y={i * 0.016} rotation-y={i * 0.06} castShadow onClick={onShelfBackdrop}>
-            <boxGeometry args={[SLEEVE.size, 0.0145, SLEEVE.size]} />
-            <meshStandardMaterial
-              color={i === 0 ? "#37352f" : "#cfc6b8"}
-              roughness={0.7}
-            />
-          </mesh>
-        ))}
-      </group>
+      {/* wicker record bins under the bottom shelf */}
+      <Basket position={[x - 0.28, 0, wallZ + 0.25]} seed={11} onClick={onShelfBackdrop} />
+      <Basket position={[x + 0.28, 0, wallZ + 0.25]} seed={47} onClick={onShelfBackdrop} />
 
-      <Plant position={[0.75, SHELF.shelfY[2] + 0.018 + 0.035, -2.02]} onClick={onShelfBackdrop} />
+      <Plant position={[x - 0.5, topBoardY + boardT / 2 + 0.035, wallZ + 0.18]} onClick={onShelfBackdrop} />
     </group>
   );
 }
