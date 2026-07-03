@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Album } from '../albums'
+import { DISPLAY_SLOTS, basketIndexFor } from '../scene/layout'
 
 export type View = 'overview' | 'player' | 'shelf' | 'volume' | 'arm' | 'art'
 export type ShelfPhase = 'none' | 'pullingOut' | 'out'
@@ -31,6 +32,8 @@ export interface State {
   hint: string | null
   lidOpen: boolean
   hoveredAlbumId: string | null
+  /** which wicker bin is slid out (bulk storage), if any */
+  basketOut: number | null
   /** 0–1 day-night cycle for natural window lighting (dev slider) */
   dayPhase: number
 
@@ -41,6 +44,7 @@ export interface State {
   clickShelfBackdrop: () => 'putBack' | 'focus' | null
   pressP: () => 'putBack' | 'select' | 'swap' | null
   setHoveredAlbumId: (id: string | null) => void
+  toggleBasket: (i: number) => void
   placeRecord: () => void
   returnRecord: () => void
   setPower: (on: boolean) => void
@@ -93,6 +97,7 @@ export const useStore = create<State>((set, get) => ({
   hint: null,
   lidOpen: false,
   hoveredAlbumId: null,
+  basketOut: null,
   dayPhase: 0.65,
 
   setAlbums: (albums) => set({ albums }),
@@ -105,7 +110,10 @@ export const useStore = create<State>((set, get) => ({
       return
     }
     if (selectedAlbumId === id && shelfPhase === 'out') return
-    set({ selectedAlbumId: id, shelfPhase: 'pullingOut', phaseStart: performance.now(), hint: null, sleeveSide: 'front' })
+    // albums stored in a wicker bin need their bin slid out before they can rise
+    const idx = get().albums.findIndex((a) => a.id === id)
+    const basketOut = idx >= DISPLAY_SLOTS ? basketIndexFor(idx) : get().basketOut
+    set({ selectedAlbumId: id, basketOut, shelfPhase: 'pullingOut', phaseStart: performance.now(), hint: null, sleeveSide: 'front' })
     scheduleShelfPhase(set, 'out', PHASE_DURATION.pullingOut)
   },
 
@@ -117,8 +125,21 @@ export const useStore = create<State>((set, get) => ({
     }
     if (!selectedAlbumId || (shelfPhase !== 'out' && shelfPhase !== 'pullingOut')) return false
     clearTimeout(shelfPhaseTimer)
-    set({ shelfPhase: 'none', selectedAlbumId: null, sleeveSide: 'front', phaseStart: performance.now(), hint: null })
+    // a bin album descends back into its bin, so make sure that bin is out
+    const idx = get().albums.findIndex((a) => a.id === selectedAlbumId)
+    const basketOut = idx >= DISPLAY_SLOTS ? basketIndexFor(idx) : get().basketOut
+    set({ shelfPhase: 'none', selectedAlbumId: null, basketOut, sleeveSide: 'front', phaseStart: performance.now(), hint: null })
     return true
+  },
+
+  toggleBasket: (i) => {
+    const s = get()
+    // don't slide a bin back under a sleeve that's still out of it
+    if (s.basketOut === i && inspectingSleeve(s)) {
+      const idx = s.albums.findIndex((a) => a.id === s.selectedAlbumId)
+      if (idx >= DISPLAY_SLOTS && basketIndexFor(idx) === i) return
+    }
+    set({ basketOut: s.basketOut === i ? null : i })
   },
 
   clickShelfBackdrop: () => {

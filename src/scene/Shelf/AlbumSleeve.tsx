@@ -9,22 +9,30 @@ import { dragActiveOrRecent, markDragEnd, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
 import { sleeveTextures } from '../textures'
 import {
+  BASKET,
+  DISPLAY_SLOTS,
   SHELF_FRONT_Z,
   SLEEVE,
   SLEEVE_LEAN,
   SLEEVE_OUT_POS,
   SLEEVE_OUT_ROT_Y,
   SLEEVE_SHELF_ROT_Y,
+  basketIndexFor,
   sleeveSlot,
 } from '../layout'
 
 const FLIP_DRAG_PX = 180
+/** lean of a record standing loosely in a wicker bin */
+const BASKET_LEAN = 0.06
 
 export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
   const outer = useRef<THREE.Group>(null)
   const pose = useRef<THREE.Group>(null)
   const hinge = useRef<THREE.Group>(null)
   const slot = useMemo(() => sleeveSlot(index), [index])
+  const inBasket = index >= DISPLAY_SLOTS
+  const myBasket = inBasket ? basketIndexFor(index) : -1
+  const basketIsOut = useStore((s) => s.basketOut === myBasket)
   const [hover, setHover] = useState(false)
   const selected = useStore((s) => s.selectedAlbumId === album.id)
   const shelfPhase = useStore((s) => s.shelfPhase)
@@ -121,17 +129,39 @@ export function AlbumSleeve({ album, index }: { album: Album; index: number }) {
   useFrame((_, dt) => {
     if (!outer.current || !pose.current || !hinge.current) return
     const p = outer.current.position
+    // bin albums track their bin as it slides open/closed
+    const homeZ = slot.z + (inBasket && basketIsOut ? BASKET.outDz : 0)
     if (isOut) {
-      // slide straight out of the compartment first, then glide to the out pose
-      const cleared = p.z > SHELF_FRONT_Z + 0.05
-      easing.damp3(
-        p,
-        cleared ? SLEEVE_OUT_POS : [slot.x, slot.y, SLEEVE_OUT_POS.z],
-        0.28,
-        dt,
-      )
+      // clear the bookcase first (ride the bin out / slide out of the
+      // compartment), then glide to the inspection pose
+      const cleared = p.z > SHELF_FRONT_Z + (inBasket ? 0.08 : 0.05)
+      const staging: [number, number, number] = inBasket
+        ? [slot.x, slot.y, slot.z + BASKET.outDz]
+        : [slot.x, slot.y, SLEEVE_OUT_POS.z]
+      easing.damp3(p, cleared ? SLEEVE_OUT_POS : staging, 0.28, dt)
       pose.current.rotation.y = SLEEVE_OUT_ROT_Y
       easing.damp(pose.current.rotation, 'x', 0, 0.22, dt)
+    } else if (inBasket) {
+      if (p.y > slot.y + 0.15) {
+        // returning from inspection: hover above the open bin, then drop in
+        const alignedXZ =
+          Math.abs(p.x - slot.x) < 0.03 && Math.abs(p.z - homeZ) < 0.03
+        easing.damp3(
+          p,
+          alignedXZ ? [slot.x, slot.y, homeZ] : [slot.x, BASKET.riseY, homeZ],
+          0.24,
+          dt,
+        )
+      } else {
+        easing.damp3(
+          p,
+          [slot.x, slot.y + (hover && !selected ? 0.02 : 0), homeZ],
+          0.22,
+          dt,
+        )
+      }
+      pose.current.rotation.y = SLEEVE_SHELF_ROT_Y
+      easing.damp(pose.current.rotation, 'x', -BASKET_LEAN, 0.22, dt)
     } else {
       // returning: line up with the slot while still in front, then slide in
       const aligned =

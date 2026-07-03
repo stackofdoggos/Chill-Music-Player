@@ -23,7 +23,7 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
 | `src/scene/Player/*` | Chassis, platter, tonearm (drag → groove radius → seek), knobs, acrylic lid. |
-| `src/scene/Shelf/*` | Freestanding walnut bookcase: interactive albums face-forward on the top two shelves (4 + up to 4, leaning against the back panel), decorative spine row on the middle shelf, two wicker record bins on the floor below. Also album sleeves (canvas textures from cover art) and the vinyl disc mesh. |
+| `src/scene/Shelf/*` | Freestanding walnut bookcase (PBR maps in `public/textures/`, CC0 — see `public/textures/CREDITS.md`): 3+3 interactive albums face-forward on the top two shelves; albums with index >= `DISPLAY_SLOTS` (6) live inside two pull-out wicker bins on the floor (bulk storage). Decorative spine row on the middle shelf. Also album sleeves (canvas textures from cover art) and the vinyl disc mesh. |
 | `scripts/fetch-albums.mjs` | yt-dlp + iTunes pipeline that builds `public/albums/` + `manifest.json`. |
 
 State machine: `shelfPhase`: `none → pullingOut → out` (browsing covers on the shelf, independent of the platter).
@@ -35,6 +35,11 @@ sleeve under the cursor for both `P` and the bottom-left control hints (`src/ui/
 Sleeve pull-out/return is staged in `AlbumSleeve.tsx` (slide straight out past `SHELF_FRONT_Z`
 before gliding to `SLEEVE_OUT_POS`, and re-align before sliding back in) so covers never clip
 through the shelf boards above them.
+Wicker bins: `basketOut` in the store tracks which bin is slid forward (clicking a bin toggles
+it, no view change). Bin albums (index >= `DISPLAY_SLOTS`) ride their bin's slide, and
+`selectAlbum`/`putBackSleeve` auto-open the owning bin so the sleeve rises/descends outside
+the bookcase (see `BASKET` in `layout.ts`). `toggleBasket` refuses to close a bin whose album
+is still out.
 Unfocus order: `volume/arm → player`, `player/shelf → overview` (see `BACK` in store).
 Entering the precision views: click the volume knob → `volume` (drag or arrow keys adjust);
 click the tonearm bearing base/pivot column → `arm` (top-down); clicking the base again, the
@@ -73,7 +78,9 @@ Typical test flow (wait ~2s between steps for camera/phase animations):
 
 ```js
 // audio requires a user gesture: click the "Enter — sound on" button first (it has an a11y ref)
-p = __proj(0.586, 1.5, -2.13); __click(...p)           // click first cover, top-left (walks to shelf + pulls it out)
+p = __proj(0.703, 1.48, -2.13); __click(...p)          // click first cover, top-left (walks to shelf + pulls it out)
+// wicker bins: __click(...__proj(0.835, 0.17, -1.78)) toggles the left bin;
+// with it open, __click(...__proj(0.835, 0.38, -1.405)) pulls out the bin album
 p = __proj(...SLEEVE_OUT_POS); __click(...p)            // place record (see layout.ts for current value)
 p = __proj(-0.81, 0.7975, -1.58); __click(...p)         // power switch
 g = __proj(-0.7635, 0.9, -1.7605); d = __proj(-0.88, 0.9, -1.64); await __drag(...g, ...d) // drop needle

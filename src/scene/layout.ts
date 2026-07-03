@@ -84,22 +84,27 @@ export function radiusToProgress(r: number): number {
 }
 
 // ---------------- shelf (freestanding walnut bookcase) ----------------
+// Proportions measured off the reference photo (records = 0.315 m for scale):
+// cross-planks ≈ 0.055 thick, sides ≈ 0.07, openings ≈ 0.34–0.44, w:h ≈ 1:1.32.
 export const SHELF = {
   x: 1.1,
   wallZ: ROOM.backZ,
-  w: 1.46,
-  d: 0.34,
-  sideT: 0.045, // thick side panels
-  boardT: 0.022, // shelf board thickness
+  w: 1.33,
+  d: 0.36,
+  sideT: 0.07, // thick side panels
+  boardT: 0.055, // chunky cross-planks
   backT: 0.018, // back panel thickness
-  footH: 0.05,
+  footH: 0.06,
   /** shelf board centre heights, bottom → top (wicker bins live below boardY[0]) */
-  boardY: [0.481, 0.911, 1.331],
-  topBoardY: 1.751,
-  sideTopY: 1.8, // side panels rise slightly above the top board
+  boardY: [0.4675, 0.8625, 1.2925],
+  topBoardY: 1.7225,
+  sideTopY: 1.75, // side panels finish flush with the top board
 };
 
 export const SLEEVE = { size: 0.315, thickness: 0.0145 };
+
+/** number of face-forward display slots (3 per row on the top two shelves) */
+export const DISPLAY_SLOTS = 6;
 
 /** backward lean of the face-forward sleeves resting against the back panel */
 export const SLEEVE_LEAN = 0.13;
@@ -110,6 +115,37 @@ export const SLEEVE_SHELF_ROT_Y = -Math.PI / 2;
 export const SHELF_BACK_INNER_Z = SHELF.wallZ + 0.012 + SHELF.backT;
 /** front face of the bookcase; sleeves are staged past this while pulling out */
 export const SHELF_FRONT_Z = SHELF.wallZ + SHELF.d;
+
+// ---------------- wicker record bins (pull-out bulk storage) ----------------
+export const BASKET = {
+  w: 0.48,
+  h: 0.29,
+  d: 0.32,
+  /** centre x of the left and right bins */
+  x: [SHELF.x - 0.265, SHELF.x + 0.265],
+  /** centre z at rest (front lip slightly proud of the bookcase, like the photo) */
+  z: SHELF_FRONT_Z + 0.05 - 0.32 / 2,
+  /** forward slide when pulled out */
+  outDz: 0.45,
+  /** sleeves rise to this height when leaving an open bin */
+  riseY: 0.56,
+};
+
+/** which bin an overflow album (index >= DISPLAY_SLOTS) lives in */
+export function basketIndexFor(albumIndex: number): number {
+  return (albumIndex - DISPLAY_SLOTS) % 2;
+}
+
+/** home pose of an overflow album standing inside its bin (bin at rest) */
+export function basketAlbumSlot(albumIndex: number): THREE.Vector3 {
+  const n = albumIndex - DISPLAY_SLOTS;
+  const slot = Math.floor(n / 2);
+  return V3(
+    BASKET.x[basketIndexFor(albumIndex)],
+    SLEEVE.size / 2 + 0.085,
+    BASKET.z + BASKET.d / 2 - 0.075 - slot * 0.035,
+  );
+}
 
 export function isShelfFocusPoint(x: number, y: number): boolean {
   const x0 = SHELF.x - SHELF.w / 2 - 0.06;
@@ -126,11 +162,13 @@ export const WALL_ART = {
 };
 
 /**
- * Face-forward display slots on the top two shelves, 4 per row, filling the
+ * Face-forward display slots on the top two shelves, 3 per row, filling the
  * top row first. Sleeves lean back against the back panel like gallery covers.
+ * Albums with index >= DISPLAY_SLOTS live in the wicker bins (basketAlbumSlot).
  */
 export function sleeveSlot(i: number): THREE.Vector3 {
-  const PER_ROW = 4;
+  if (i >= DISPLAY_SLOTS) return basketAlbumSlot(i);
+  const PER_ROW = 3;
   const row = Math.floor(i / PER_ROW); // 0 = top shelf, 1 = shelf below
   const col = i % PER_ROW;
   const innerX0 = SHELF.x - SHELF.w / 2 + SHELF.sideT;
@@ -159,7 +197,7 @@ export const STATIONS: Record<
   // zoomed to feel close while the desk legs stay at the bottom of frame
   overview: { pos: V3(0.25, 1.36, 1.55), target: V3(0.1, 0.98, -2.0) },
   player: { pos: V3(-0.86, 1.46, -0.58), target: V3(-0.9, 0.84, -1.78) },
-  shelf: { pos: V3(1.1, 1.45, -0.52), target: V3(1.1, 1.28, -2.05) },
+  shelf: { pos: V3(1.1, 1.42, -0.55), target: V3(1.1, 1.24, -2.05) },
   // close-up on the volume knob (front face of the chassis)
   volume: { pos: V3(-0.665, 0.875, -1.31), target: V3(-0.665, 0.797, -1.58) },
   // almost straight above the deck, for precise tonearm placement

@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
+import { RoundedBox, useTexture } from "@react-three/drei";
 import * as THREE from "three";
+import { easing } from "maath";
 import { dragActiveOrRecent, useStore } from "../../state/store";
 import { engine } from "../../audio/engine";
-import { woodTexture } from "../textures";
-import { SHELF, SHELF_BACK_INNER_Z, SLEEVE } from "../layout";
+import { BASKET, DISPLAY_SLOTS, SHELF, SHELF_BACK_INNER_Z, SLEEVE } from "../layout";
 import { AlbumSleeve } from "./AlbumSleeve";
 
-/** deterministic PRNG so the decorative records/bins never reshuffle */
+/** deterministic PRNG so the decorative records never reshuffle */
 function mulberry32(a: number) {
   return () => {
     a |= 0;
@@ -64,7 +66,7 @@ function SpineRow({ onClick }: { onClick: (e: ThreeEvent<MouseEvent>) => void })
       out.push({
         x: x + w / 2,
         w,
-        h: 0.29 + rnd() * 0.024,
+        h: 0.275 + rnd() * 0.028,
         z: SHELF_BACK_INNER_Z + 0.15 + (rnd() - 0.5) * 0.014,
         color: SPINE_PALETTE[Math.floor(rnd() * SPINE_PALETTE.length)],
       });
@@ -86,44 +88,66 @@ function SpineRow({ onClick }: { onClick: (e: ThreeEvent<MouseEvent>) => void })
   );
 }
 
-/** woven basket built from stacked square hoops, filled with record sleeves */
+/**
+ * Woven wicker bin (real weave maps from ambientCG Wicker007A). Slides
+ * forward when toggled — bulk record storage. `reserved` front slots are
+ * left empty for real albums, which live outside this group and track the
+ * slide themselves.
+ */
 function Basket({
-  position,
+  index,
   seed,
-  onClick,
+  reserved,
+  wicker,
 }: {
-  position: [number, number, number];
+  index: number;
   seed: number;
-  onClick: (e: ThreeEvent<MouseEvent>) => void;
+  reserved: number;
+  wicker: { map: THREE.Texture; normalMap: THREE.Texture; roughnessMap: THREE.Texture };
 }) {
-  const W = 0.42;
-  const D = 0.3;
-  const H = 0.3;
-  const HOOPS = 6;
-  const hoopH = H / HOOPS;
+  const group = useRef<THREE.Group>(null);
+  const isOut = useStore((s) => s.basketOut === index);
+  const { w: W, h: H, d: D } = BASKET;
+  const x = BASKET.x[index];
 
   const records = useMemo(() => {
     const rnd = mulberry32(seed);
-    const out: { z: number; tilt: number; color: string }[] = [];
-    let z = -D / 2 + 0.05;
-    while (z < D / 2 - 0.03) {
+    const out: { z: number; tilt: number; drop: number; color: string }[] = [];
+    for (let slot = reserved; ; slot++) {
+      const z = D / 2 - 0.075 - slot * 0.035;
+      if (z < -D / 2 + 0.05) break;
       out.push({
         z,
-        tilt: (rnd() - 0.5) * 0.12,
+        tilt: (rnd() - 0.5) * 0.1,
+        drop: rnd() * 0.03,
         color: SPINE_PALETTE[Math.floor(rnd() * SPINE_PALETTE.length)],
       });
-      z += 0.02 + rnd() * 0.014;
     }
     return out;
-  }, [seed]);
+  }, [seed, reserved, D]);
+
+  useFrame((_, dt) => {
+    if (!group.current) return;
+    easing.damp(group.current.position, "z", BASKET.z + (isOut ? BASKET.outDz : 0), 0.28, dt);
+  });
+
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (dragActiveOrRecent()) return;
+    const wasOut = useStore.getState().basketOut === index;
+    useStore.getState().toggleBasket(index);
+    if (useStore.getState().basketOut !== (wasOut ? index : null)) {
+      engine.playSfx(wasOut ? "sleeveIn" : "sleeveOut", 0.7, 0.7);
+    }
+  };
 
   return (
-    <group position={position}>
-      {/* records standing inside, tops peeking over the rim */}
+    <group ref={group} position={[x, 0, BASKET.z]}>
+      {/* decorative records standing inside */}
       {records.map((r, i) => (
         <mesh
           key={i}
-          position={[0, SLEEVE.size / 2 + 0.055, r.z]}
+          position={[0, SLEEVE.size / 2 + 0.085 - r.drop, r.z]}
           rotation-x={r.tilt}
           castShadow
           onClick={onClick}
@@ -132,40 +156,47 @@ function Basket({
           <meshStandardMaterial color={r.color} roughness={0.75} />
         </mesh>
       ))}
-      {/* dark interior filler hides the hollow between hoops and records */}
+      {/* dark interior filler hides the hollow between walls and records */}
       <mesh position={[0, H / 2 - 0.03, 0]} onClick={onClick}>
-        <boxGeometry args={[W - 0.05, H - 0.08, D - 0.05]} />
+        <boxGeometry args={[W - 0.04, H - 0.08, D - 0.04]} />
         <meshStandardMaterial color="#3a2c1e" roughness={1} />
       </mesh>
-      {/* woven walls: stacked, slightly tapered square hoops */}
-      {Array.from({ length: HOOPS }, (_, i) => {
-        const t = i / (HOOPS - 1);
-        const scale = 0.93 + 0.07 * t;
-        return (
-          <mesh
-            key={i}
-            position={[0, hoopH * (i + 0.5), 0]}
-            rotation-y={Math.PI / 4}
-            scale={[scale, 1, (scale * D) / W]}
-            castShadow
-            onClick={onClick}
-          >
-            <cylinderGeometry args={[W / Math.SQRT2, (W / Math.SQRT2) * 0.985, hoopH - 0.003, 4]} />
-            <meshStandardMaterial
-              color={i % 2 === 0 ? "#b98d5f" : "#a97e52"}
-              roughness={0.85}
-            />
-          </mesh>
-        );
-      })}
-      {/* rim */}
-      <mesh position={[0, H + 0.008, 0]} rotation-y={Math.PI / 4} scale={[1.02, 1, (1.02 * D) / W]} castShadow onClick={onClick}>
-        <cylinderGeometry args={[W / Math.SQRT2, W / Math.SQRT2, 0.022, 4]} />
-        <meshStandardMaterial color="#8f6a44" roughness={0.8} />
-      </mesh>
+      {/* woven shell */}
+      <RoundedBox
+        args={[W, H, D]}
+        radius={0.02}
+        smoothness={4}
+        position={[0, H / 2, 0]}
+        castShadow
+        receiveShadow
+        onClick={onClick}
+      >
+        <meshStandardMaterial
+          map={wicker.map}
+          normalMap={wicker.normalMap}
+          roughnessMap={wicker.roughnessMap}
+          normalScale={new THREE.Vector2(1, 1)}
+        />
+      </RoundedBox>
+      {/* braided rim */}
+      <RoundedBox
+        args={[W + 0.02, 0.03, D + 0.02]}
+        radius={0.012}
+        smoothness={4}
+        position={[0, H, 0]}
+        castShadow
+        onClick={onClick}
+      >
+        <meshStandardMaterial
+          map={wicker.map}
+          normalMap={wicker.normalMap}
+          roughnessMap={wicker.roughnessMap}
+          color="#c19a6b"
+        />
+      </RoundedBox>
       {/* handle cutout on the front face */}
-      <mesh position={[0, H * 0.62, D / 2 + 0.002]} onClick={onClick}>
-        <boxGeometry args={[0.09, 0.028, 0.006]} />
+      <mesh position={[0, H * 0.6, D / 2 + 0.012]} onClick={onClick}>
+        <boxGeometry args={[0.1, 0.03, 0.006]} />
         <meshStandardMaterial color="#241a12" roughness={1} />
       </mesh>
     </group>
@@ -175,10 +206,52 @@ function Basket({
 export function Shelf() {
   const albums = useStore((s) => s.albums);
 
-  const walnut = useMemo(() => {
-    const map = woodTexture(1.4, 1.4);
-    return new THREE.MeshStandardMaterial({ map, color: "#77604f", roughness: 0.6 });
-  }, []);
+  const [woodDiff, woodNor, woodRough, wickerDiff, wickerNor, wickerRough] = useTexture([
+    "/textures/walnut_diff.jpg",
+    "/textures/walnut_nor.jpg",
+    "/textures/walnut_rough.jpg",
+    "/textures/wicker_diff.jpg",
+    "/textures/wicker_nor.jpg",
+    "/textures/wicker_rough.jpg",
+  ]);
+
+  const { walnutH, walnutV, wicker } = useMemo(() => {
+    woodDiff.colorSpace = THREE.SRGBColorSpace;
+    wickerDiff.colorSpace = THREE.SRGBColorSpace;
+    for (const t of [woodDiff, woodNor, woodRough, wickerDiff, wickerNor, wickerRough]) {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = 8;
+    }
+    // horizontal grain for the cross-planks
+    // walnut_diff.jpg is colour-corrected on disk to the reference photo's tone
+    const walnutH = new THREE.MeshStandardMaterial({
+      map: woodDiff,
+      normalMap: woodNor,
+      roughnessMap: woodRough,
+    });
+    // vertical grain for the side/back panels (rotated colour map, no normal
+    // map — rotated normals would light incorrectly)
+    const rotate = (t: THREE.Texture) => {
+      const c = t.clone();
+      c.center.set(0.5, 0.5);
+      c.rotation = Math.PI / 2;
+      c.needsUpdate = true;
+      return c;
+    };
+    const walnutV = new THREE.MeshStandardMaterial({
+      map: rotate(woodDiff),
+      roughnessMap: rotate(woodRough),
+    });
+    // fine weave: ~2.5 cm strands like the reference photo
+    wickerDiff.repeat.set(2.2, 1.3);
+    wickerNor.repeat.set(2.2, 1.3);
+    wickerRough.repeat.set(2.2, 1.3);
+    return {
+      walnutH,
+      walnutV,
+      wicker: { map: wickerDiff, normalMap: wickerNor, roughnessMap: wickerRough },
+    };
+  }, [woodDiff, woodNor, woodRough, wickerDiff, wickerNor, wickerRough]);
 
   const onShelfBackdrop = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -187,10 +260,14 @@ export function Shelf() {
     if (action === "putBack") engine.playSfx("sleeveIn", 0.85, 1.05);
   };
 
-  const { x, wallZ, w, d, sideT, boardT, backT, footH, boardY, topBoardY, sideTopY } = SHELF;
+  const { x, wallZ, w, d, sideT, boardT, footH, backT, boardY, topBoardY, sideTopY } = SHELF;
   const zMid = wallZ + d / 2;
   const sideH = sideTopY - footH;
   const innerW = w - 2 * sideT;
+
+  // overflow albums per bin (front slots reserved for the real sleeves)
+  const overflow = Math.max(albums.length - DISPLAY_SLOTS, 0);
+  const reserved = [Math.ceil(overflow / 2), Math.floor(overflow / 2)];
 
   return (
     <group>
@@ -199,7 +276,7 @@ export function Shelf() {
         <mesh
           key={s}
           position={[x + s * (w / 2 - sideT / 2), footH + sideH / 2, zMid]}
-          material={walnut}
+          material={walnutV}
           castShadow
           receiveShadow
           onClick={onShelfBackdrop}
@@ -211,19 +288,19 @@ export function Shelf() {
       {/* back panel */}
       <mesh
         position={[x, footH + sideH / 2, wallZ + 0.012 + backT / 2]}
-        material={walnut}
+        material={walnutV}
         receiveShadow
         onClick={onShelfBackdrop}
       >
         <boxGeometry args={[w - 2 * sideT + 0.02, sideH, backT]} />
       </mesh>
 
-      {/* top board + three shelf boards */}
+      {/* top board + three cross-planks */}
       {[topBoardY, ...boardY].map((y) => (
         <mesh
           key={y}
           position={[x, y, zMid]}
-          material={walnut}
+          material={walnutH}
           castShadow
           receiveShadow
           onClick={onShelfBackdrop}
@@ -241,13 +318,13 @@ export function Shelf() {
             castShadow
             onClick={onShelfBackdrop}
           >
-            <boxGeometry args={[0.05, footH, 0.05]} />
+            <boxGeometry args={[0.055, footH, 0.055]} />
             <meshStandardMaterial color="#211a14" roughness={0.6} />
           </mesh>
         )),
       )}
 
-      {/* the interactive albums, face-forward on the top two shelves */}
+      {/* the interactive albums: 3+3 face-forward, the rest in the bins */}
       {albums.map((a, i) => (
         <AlbumSleeve key={a.id} album={a} index={i} />
       ))}
@@ -255,11 +332,11 @@ export function Shelf() {
       {/* dense collection on the middle shelf */}
       <SpineRow onClick={onShelfBackdrop} />
 
-      {/* wicker record bins under the bottom shelf */}
-      <Basket position={[x - 0.28, 0, wallZ + 0.25]} seed={11} onClick={onShelfBackdrop} />
-      <Basket position={[x + 0.28, 0, wallZ + 0.25]} seed={47} onClick={onShelfBackdrop} />
+      {/* pull-out wicker bins — bulk record storage */}
+      <Basket index={0} seed={11} reserved={reserved[0]} wicker={wicker} />
+      <Basket index={1} seed={47} reserved={reserved[1]} wicker={wicker} />
 
-      <Plant position={[x - 0.5, topBoardY + boardT / 2 + 0.035, wallZ + 0.18]} onClick={onShelfBackdrop} />
+      <Plant position={[x - 0.45, topBoardY + boardT / 2 + 0.035, wallZ + 0.19]} onClick={onShelfBackdrop} />
     </group>
   );
 }
