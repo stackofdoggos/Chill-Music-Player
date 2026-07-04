@@ -21,6 +21,8 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
+| `src/scene/Volumetrics.tsx` | Fake window sun shafts + dust motes (additive quads/points, no raymarch). Intensity = `shaftStrength(atmosphere)` × mode from settings. |
+| `src/state/settings.ts` | Graphics settings zustand store (persisted to localStorage): `softShadows` (VSM vs PCF), `ambientOcclusion` (N8AO), `lightShafts` (off/subtle/pronounced), `highRes` (dpr). Panel UI in `src/ui/SettingsPanel.tsx` (gear, top-left). Dev handle: `__settings`. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
 | `src/scene/Player/*` | Chassis, platter, tonearm (drag → groove radius → seek), knobs, acrylic lid. |
 | `src/scene/Shelf/*` | Freestanding walnut bookcase (PBR maps in `public/textures/`, CC0 — see `public/textures/CREDITS.md`): 3+3 interactive albums face-forward on the top two shelves; albums with index >= `DISPLAY_SLOTS` (6) live inside two pull-out wicker bins on the floor (bulk storage). Decorative spine row on the middle shelf. Also album sleeves (canvas textures from cover art) and the vinyl disc mesh. |
@@ -129,7 +131,14 @@ __engine.getProgress()                                   // should advance while
    try/catch and explicitly calls `releasePointerCapture` in `onUp`. If clicks mysteriously
    stop hitting objects during automation, suspect a stale capture — reload the page.
 11. **ContactShadows are top-down and expensive.** drei's `ContactShadows` re-renders the whole scene every frame from a fixed overhead camera — shadows never sweep with a directional sun, and `frames={Infinity}` causes 50–100ms rAF spikes. Use `directionalLight castShadow` only; `DirectionalLight.target` must be `scene.add(target)`.
-12. **Raycast diagnosis.** `window.__hits(clientX, clientY)` (dev only) lists the first 8
+12. **GLSL NaNs poison the bloom pass.** One NaN pixel (e.g. `pow(0.0, y)` on
+    Metal/ANGLE) spreads through Bloom's mipmap chain and blacks out most of the frame,
+    with **no console error**. Symptom: screen mostly black but UI fine, worse from some
+    camera angles. Clamp pow bases (`pow(max(x, 1e-4), y)`) in custom shaders.
+13. **drei `SoftShadows` (PCSS) is incompatible with three r184** — its shader injection
+    still calls `unpackRGBAToDepth` and fails to compile every material. Use
+    `VSMShadowMap` for soft area shadows instead (see `ShadowQuality` in `Experience.tsx`).
+14. **Raycast diagnosis.** `window.__hits(clientX, clientY)` (dev only) lists the first 8
    intersections at a screen point, nearest first — use it whenever a click "does nothing".
    Note it ignores `visible=false` differences from r3f's raycaster; named meshes
    (`arm-base`, `arm-pivot-column`) read clearest.

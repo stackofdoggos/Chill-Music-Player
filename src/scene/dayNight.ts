@@ -404,6 +404,14 @@ export function sampleAtmosphere(phase: number, out = scratch): Atmosphere {
   return lerpRaw(a, b, local, out)
 }
 
+/**
+ * 0–1 strength of the window light shafts, derived from the window glow so
+ * beams appear with low warm sun (golden hour/sunset) and vanish at night.
+ */
+export function shaftStrength(a: Atmosphere): number {
+  return THREE.MathUtils.clamp((a.windowEmissiveIntensity - 0.3) / 1.5, 0, 1)
+}
+
 export type PhaseMark = { t: number; label: string }
 
 /** Keyframe positions for the day-night slider ticks (excludes duplicate night at t=1). */

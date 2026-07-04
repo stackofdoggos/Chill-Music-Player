@@ -1,10 +1,13 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
-import type { DirectionalLight, HemisphereLight, Object3D, PointLight, SpotLight } from 'three'
-import { PLAYER_POS } from './layout'
+import type { DirectionalLight, HemisphereLight, Object3D, PointLight, RectAreaLight, SpotLight } from 'three'
+import { RectAreaLightUniformsLib } from 'three-stdlib'
+import { PLAYER_POS, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { useStore } from '../state/store'
+
+RectAreaLightUniformsLib.init()
 
 /** Static reflection rig — intensity scaled via scene.environmentIntensity per phase. */
 function SceneEnvironment() {
@@ -26,6 +29,7 @@ export function Lighting() {
   const fill = useRef<DirectionalLight>(null)
   const fillTarget = useRef<Object3D>(null)
   const lamp = useRef<PointLight>(null)
+  const windowLight = useRef<RectAreaLight>(null)
 
   useLayoutEffect(() => {
     const bound: Object3D[] = []
@@ -72,6 +76,13 @@ export function Lighting() {
       lamp.current.color.copy(a.lampColor)
       lamp.current.intensity = a.lampIntensity
     }
+    if (windowLight.current) {
+      // soft area glow from the window pane — gives walls/floor the gentle
+      // wraparound falloff a real window produces (no shadows; the spotlight
+      // above still provides directional shadowing)
+      windowLight.current.color.copy(a.windowEmissive)
+      windowLight.current.intensity = a.windowEmissiveIntensity * 1.5 + a.hemiIntensity * 0.6
+    }
   }, -1)
 
   return (
@@ -93,6 +104,14 @@ export function Lighting() {
         shadow-camera-far={16}
       />
       <directionalLight ref={fill} position={[-2, 1.8, 2.2]} />
+      {/* window pane as a real area light (LTC), matching the emissive plane in Room */}
+      <rectAreaLight
+        ref={windowLight}
+        position={[ROOM.w / 2 - 0.03, 1.45, -0.55]}
+        rotation-y={Math.PI / 2}
+        width={1.35}
+        height={1.05}
+      />
       <pointLight
         ref={lamp}
         position={[PLAYER_POS.x, PLAYER_POS.y + 0.55, PLAYER_POS.z]}

@@ -27,6 +27,34 @@ const SPINE_PALETTE = [
   "#b0a390", "#55503f", "#274a43", "#8c3b2e",
 ];
 
+/**
+ * Wrap-lighting translucency (fake SSS) for the plant leaves: light from
+ * behind bleeds through thin geometry with a warm-green tint. Injected into
+ * MeshStandardMaterial so tone mapping/env lighting still apply.
+ */
+function makeLeafMaterial(): THREE.MeshStandardMaterial {
+  const mat = new THREE.MeshStandardMaterial({ color: "#4a6b4f", roughness: 0.7 });
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_fragment_end>",
+      /* glsl */ `
+      #include <lights_fragment_end>
+      {
+        // translucency: view-dependent backlight bleeding through the leaf
+        #if NUM_SPOT_LIGHTS > 0
+        vec3 sssLightDir = normalize(spotLights[0].position - geometryPosition);
+        vec3 sssHalf = normalize(sssLightDir + geometryNormal * 0.35);
+        float sssDot = pow(clamp(dot(geometryViewDir, -sssHalf), 0.0, 1.0), 2.2);
+        vec3 sssColor = vec3(0.55, 0.85, 0.35) * sssDot * 0.6;
+        reflectedLight.directDiffuse += sssColor * spotLights[0].color;
+        #endif
+      }
+      `,
+    );
+  };
+  return mat;
+}
+
 function Plant({ position, onClick }: { position: [number, number, number]; onClick: (e: ThreeEvent<MouseEvent>) => void }) {
   const leaves = [
     { r: 0, h: 0.22, lean: 0.05 },
@@ -35,6 +63,7 @@ function Plant({ position, onClick }: { position: [number, number, number]; onCl
     { r: 3.8, h: 0.25, lean: 0.08 },
     { r: 5.0, h: 0.21, lean: -0.14 },
   ];
+  const leafMat = useMemo(makeLeafMaterial, []);
   return (
     <group position={position}>
       <mesh castShadow onClick={onClick}>
@@ -43,9 +72,8 @@ function Plant({ position, onClick }: { position: [number, number, number]; onCl
       </mesh>
       {leaves.map((l, i) => (
         <group key={i} rotation-y={l.r} position-y={0.03}>
-          <mesh position-y={l.h / 2} rotation-x={l.lean} castShadow onClick={onClick}>
+          <mesh position-y={l.h / 2} rotation-x={l.lean} material={leafMat} castShadow onClick={onClick}>
             <coneGeometry args={[0.016, l.h, 6]} />
-            <meshStandardMaterial color="#4a6b4f" roughness={0.7} />
           </mesh>
         </group>
       ))}
