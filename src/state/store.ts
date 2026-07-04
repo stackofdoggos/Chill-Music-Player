@@ -98,7 +98,7 @@ export const useStore = create<State>((set, get) => ({
   lidOpen: false,
   hoveredAlbumId: null,
   basketOut: null,
-  dayPhase: 0.65,
+  dayPhase: 0.74,
 
   setAlbums: (albums) => set({ albums }),
   setView: (view) => set({ view, hoveredAlbumId: view === 'shelf' ? get().hoveredAlbumId : null }),

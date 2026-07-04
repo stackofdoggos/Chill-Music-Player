@@ -1,6 +1,10 @@
 # Texture credits
 
-All CC0, processed for this project:
+- `wall_diff.jpg` / `wall_nor.png` / `wall_rough.jpg` — "Concrete Worn" (8690)
+  from [Poliigon](https://www.poliigon.com), licensed to the project owner.
+  Cropped to a 2.2:1 band and brightness-normalized for the back wall.
+
+CC0, processed for this project:
 
 - `walnut_diff.jpg` / `walnut_nor.jpg` / `walnut_rough.jpg` — "Dark Wood"
   from [Poly Haven](https://polyhaven.com/a/dark_wood) (2K JPG maps).

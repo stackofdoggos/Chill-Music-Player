@@ -2,9 +2,11 @@ import { useMemo, useRef, Suspense } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useFrame } from '@react-three/fiber'
 import type { MeshStandardMaterial } from 'three'
+import * as THREE from 'three'
 import { requestUnfocus, useStore } from '../state/store'
 import { engine } from '../audio/engine'
 import { woodTexture } from './textures'
+import { assetUrl } from '../assetUrl'
 import { DESK, isShelfFocusPoint, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { WallArt } from './WallArt'
@@ -12,6 +14,26 @@ import { WallArt } from './WallArt'
 export function Room() {
   const floorTex = useMemo(() => woodTexture(5, 5, true), [])
   const deskTex = useMemo(() => woodTexture(2, 1), [])
+
+  // microcement wash on the back wall (Poliigon ConcreteWorn, user-licensed).
+  // A 2.2:1 band cropped from the 4K source maps UV 0-1 edge-to-edge across
+  // the 6.4x2.9 m wall — no repeats, so no visible tiling. The diffuse is
+  // mean-normalized bright so the day-night wallColor tint stays in charge.
+  const wallMaps = useMemo(() => {
+    const loader = new THREE.TextureLoader()
+    const load = (file: string, srgb = false) => {
+      const t = loader.load(assetUrl(`textures/${file}`))
+      t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping
+      t.anisotropy = 8
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace
+      return t
+    }
+    return {
+      map: load('wall_diff.jpg', true),
+      normalMap: load('wall_nor.png'),
+      roughnessMap: load('wall_rough.jpg'),
+    }
+  }, [])
 
   const backWallMat = useRef<MeshStandardMaterial>(null)
   const leftWallMat = useRef<MeshStandardMaterial>(null)
@@ -60,7 +82,15 @@ export function Room() {
       {/* walls */}
       <mesh position={[0, ROOM.h / 2, ROOM.backZ]} onClick={onBackWallClick} receiveShadow>
         <planeGeometry args={[ROOM.w, ROOM.h]} />
-        <meshStandardMaterial ref={backWallMat} color="#ece9e2" roughness={0.95} />
+        <meshStandardMaterial
+          ref={backWallMat}
+          color="#ece9e2"
+          roughness={1}
+          map={wallMaps.map}
+          normalMap={wallMaps.normalMap}
+          normalScale={new THREE.Vector2(0.3, 0.3)}
+          roughnessMap={wallMaps.roughnessMap}
+        />
       </mesh>
       <mesh position={[-ROOM.w / 2, ROOM.h / 2, 0]} rotation-y={Math.PI / 2} onClick={toOverview}>
         <planeGeometry args={[ROOM.d + 2, ROOM.h]} />

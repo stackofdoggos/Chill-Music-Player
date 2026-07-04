@@ -26,7 +26,7 @@ export const useSettings = create<GraphicsSettings>()(
     (set) => ({
       softShadows: true,
       ambientOcclusion: true,
-      lightShafts: 'subtle',
+      lightShafts: 'pronounced',
       highRes: true,
       panelOpen: false,
 
