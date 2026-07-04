@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type ShaftMode = 'off' | 'subtle' | 'pronounced'
+export type ResolutionMode = 'auto' | 'standard' | 'high'
 
 export interface GraphicsSettings {
   /** PCSS contact-hardening shadows (vs plain PCF) */
@@ -10,15 +11,23 @@ export interface GraphicsSettings {
   ambientOcclusion: boolean
   /** window light shafts + dust motes */
   lightShafts: ShaftMode
-  /** render at device pixel ratio (High) or 1x (Standard) */
-  highRes: boolean
+  /** auto = 1× haze at golden hour/sunset, device DPR at night */
+  resolutionMode: ResolutionMode
   panelOpen: boolean
 
   setSoftShadows: (v: boolean) => void
   setAmbientOcclusion: (v: boolean) => void
   setLightShafts: (v: ShaftMode) => void
-  setHighRes: (v: boolean) => void
+  setResolutionMode: (v: ResolutionMode) => void
   setPanelOpen: (v: boolean) => void
+}
+
+type PersistedV0 = {
+  softShadows?: boolean
+  ambientOcclusion?: boolean
+  lightShafts?: ShaftMode
+  highRes?: boolean
+  resolutionMode?: ResolutionMode
 }
 
 export const useSettings = create<GraphicsSettings>()(
@@ -27,22 +36,31 @@ export const useSettings = create<GraphicsSettings>()(
       softShadows: true,
       ambientOcclusion: true,
       lightShafts: 'pronounced',
-      highRes: true,
+      resolutionMode: 'auto',
       panelOpen: false,
 
       setSoftShadows: (softShadows) => set({ softShadows }),
       setAmbientOcclusion: (ambientOcclusion) => set({ ambientOcclusion }),
       setLightShafts: (lightShafts) => set({ lightShafts }),
-      setHighRes: (highRes) => set({ highRes }),
+      setResolutionMode: (resolutionMode) => set({ resolutionMode }),
       setPanelOpen: (panelOpen) => set({ panelOpen }),
     }),
     {
       name: 'record-room-graphics',
+      version: 1,
+      migrate: (persisted) => {
+        const s = persisted as PersistedV0
+        if (s.resolutionMode) return persisted as GraphicsSettings
+        return {
+          ...s,
+          resolutionMode: s.highRes === false ? 'standard' : 'auto',
+        } as GraphicsSettings
+      },
       partialize: (s) => ({
         softShadows: s.softShadows,
         ambientOcclusion: s.ambientOcclusion,
         lightShafts: s.lightShafts,
-        highRes: s.highRes,
+        resolutionMode: s.resolutionMode,
       }),
     },
   ),

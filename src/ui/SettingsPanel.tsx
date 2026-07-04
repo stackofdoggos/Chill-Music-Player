@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSettings, type ShaftMode } from '../state/settings'
+import { useSettings, type ResolutionMode, type ShaftMode } from '../state/settings'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -155,12 +155,13 @@ export function SettingsPanel() {
             <div className="settings__row settings__row--stack">
               <div>
                 <div className="settings__label">Resolution</div>
-                <div className="settings__hint">Standard renders at 1× for slower machines</div>
+                <div className="settings__hint">Auto softens at golden hour; High at night</div>
               </div>
-              <Segmented<'standard' | 'high'>
-                value={s.highRes ? 'high' : 'standard'}
-                onChange={(v) => s.setHighRes(v === 'high')}
+              <Segmented<ResolutionMode>
+                value={s.resolutionMode}
+                onChange={s.setResolutionMode}
                 options={[
+                  { value: 'auto', label: 'Auto' },
                   { value: 'standard', label: 'Standard' },
                   { value: 'high', label: 'High' },
                 ]}

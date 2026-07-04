@@ -6,7 +6,7 @@ import { requestUnfocus, useStore } from '../state/store'
 import { useSettings } from '../state/settings'
 import { engine } from '../audio/engine'
 import { STATIONS } from './layout'
-import { sampleAtmosphere } from './dayNight'
+import { effectiveDpr, sampleAtmosphere } from './dayNight'
 import { Lighting } from './Lighting'
 import { Room } from './Room'
 import { CameraRig } from './CameraRig'
@@ -79,10 +79,12 @@ function AtmospherePost() {
 }
 
 export function Experience() {
-  const highRes = useSettings((s) => s.highRes)
+  const dayPhase = useStore((s) => s.dayPhase)
+  const resolutionMode = useSettings((s) => s.resolutionMode)
+  const dpr = effectiveDpr(dayPhase, resolutionMode)
   return (
     <Canvas
-      dpr={highRes ? [1, 2] : 1}
+      dpr={dpr}
       camera={{ fov: 40, position: STATIONS.overview.pos.toArray(), near: 0.05, far: 30 }}
       onCreated={({ gl }) => {
         gl.shadowMap.enabled = true
