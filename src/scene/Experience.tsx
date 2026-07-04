@@ -37,7 +37,7 @@ function ShadowQuality() {
       if (light.isLight && light.shadow) {
         light.shadow.bias = soft ? -0.00008 : -0.0002
         light.shadow.normalBias = soft ? 0.01 : 0.02
-        light.shadow.radius = soft ? 6 : 1
+        light.shadow.radius = soft ? 2.5 : 1
         light.shadow.blurSamples = 12
         light.shadow.needsUpdate = true
       }

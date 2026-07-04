@@ -53,7 +53,9 @@ off it or returning the record — never as a side effect of a drag.
 - `__store` — the zustand store. `__store.getState()` for everything; call actions directly.
 - `__engine` — the audio engine. Useful: `.rate`, `.getProgress()`, `.needleDown`, `.platterAngle`.
 - `__proj(x, y, z)` — projects a world point to client pixel coords via the live camera.
-  Use this to compute click targets instead of guessing from screenshots.
+ Use this to compute click targets instead of guessing from screenshots.
+- `__scene` — the live THREE.Scene. Traverse it to isolate lights, lock uniforms, or add
+ debug meshes when diagnosing lighting/shadow issues headlessly.
 
 ## Driving the app headlessly (browser MCP / CDP)
 
@@ -142,6 +144,14 @@ __engine.getProgress()                                   // should advance while
    intersections at a screen point, nearest first — use it whenever a click "does nothing".
    Note it ignores `visible=false` differences from r3f's raycaster; named meshes
    (`arm-base`, `arm-pivot-column`) read clearest.
+15. **Shadowless fills erase spotlight shadows.** The sun spot is the only shadow caster;
+    hemi, fill directional, window `rectAreaLight`, and the `Environment` lightformers all
+    add shadowless light. If their sum on a surface rivals the spot's contribution, cast
+    shadows become invisible (the room looks "flat washed"). At low-sun phases keep
+    key ≫ fills (see golden/sunset keyframes: key 5.5–6.5 vs hemi ≤0.14, env ≤0.1).
+    To diagnose: traverse `__scene`, hide non-shadow lights + lock emissives/env to 0 —
+    if shadows appear spot-only but not composed, it's washout, not a broken pipeline.
+    Note VSM (`radius` in `ShadowQuality`) further softens/attenuates thin shadows.
 
 ## Verification checklist
 

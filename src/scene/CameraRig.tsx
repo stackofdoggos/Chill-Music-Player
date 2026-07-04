@@ -29,7 +29,9 @@ export function CameraRig() {
       const w = window as unknown as {
         __proj: (x: number, y: number, z: number) => number[]
         __hits: (cx: number, cy: number) => string[]
+        __scene: THREE.Scene
       }
+      w.__scene = scene as THREE.Scene
       w.__proj = (x, y, z) => {
         const v = new THREE.Vector3(x, y, z).project(camera)
         return [((v.x + 1) / 2) * window.innerWidth, ((1 - v.y) / 2) * window.innerHeight]

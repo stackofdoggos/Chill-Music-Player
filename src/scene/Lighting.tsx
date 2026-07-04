@@ -78,10 +78,11 @@ export function Lighting() {
     }
     if (windowLight.current) {
       // soft area glow from the window pane — gives walls/floor the gentle
-      // wraparound falloff a real window produces (no shadows; the spotlight
-      // above still provides directional shadowing)
+      // wraparound falloff a real window produces. Kept well below the sun
+      // spotlight: rect lights cast no shadows, so if this dominates it
+      // washes the sun shadows out (shelf/desk shadows vanish).
       windowLight.current.color.copy(a.windowEmissive)
-      windowLight.current.intensity = a.windowEmissiveIntensity * 1.5 + a.hemiIntensity * 0.6
+      windowLight.current.intensity = a.windowEmissiveIntensity * 0.12 + a.hemiIntensity * 0.5
     }
   }, -1)
 
