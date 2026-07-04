@@ -81,7 +81,8 @@ export function Lighting() {
       // wraparound falloff a real window produces (no shadows; the spotlight
       // above still provides directional shadowing)
       windowLight.current.color.copy(a.windowEmissive)
-      windowLight.current.intensity = a.windowEmissiveIntensity * 1.5 + a.hemiIntensity * 0.6
+      windowLight.current.intensity = a.windowEmissiveIntensity * 1.9 + a.hemiIntensity * 0.6
+      // default is * 1.5, * 0.6
     }
   }, -1)
 

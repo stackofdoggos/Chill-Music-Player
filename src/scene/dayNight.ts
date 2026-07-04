@@ -271,7 +271,7 @@ const KEYFRAMES: RawKeyframe[] = [
     lampColor: '#ffb070',
     lampIntensity: 0.42,
     windowEmissive: '#a05840',
-    windowEmissiveIntensity: 0.45,
+    windowEmissiveIntensity: 0.95,
     ceilingEmissive: '#4a5060',
     ceilingEmissiveIntensity: 0.15,
     wallColor: '#6a6878',
