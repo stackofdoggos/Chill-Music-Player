@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSettings, type ShaftMode } from '../state/settings'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -44,23 +44,51 @@ function Segmented<T extends string>({
 
 export function SettingsPanel() {
   const s = useSettings()
+  const open = s.panelOpen
+  const [shown, setShown] = useState(open)
+  const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
-    if (!s.panelOpen) return
+    if (open) {
+      setShown(true)
+      setLeaving(false)
+      return
+    }
+    if (!shown) return
+    setLeaving(true)
+    const id = window.setTimeout(() => {
+      setShown(false)
+      setLeaving(false)
+    }, 320)
+    return () => window.clearTimeout(id)
+  }, [open, shown])
+
+  const gearRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') s.setPanelOpen(false)
+      if (e.key === 'Escape') {
+        s.setPanelOpen(false)
+        // Escape returns focus to the trigger — blur so the cog doesn't highlight
+        requestAnimationFrame(() => gearRef.current?.blur())
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [s.panelOpen, s])
+  }, [open, s])
+
+  const close = () => s.setPanelOpen(false)
 
   return (
     <>
       <button
+        ref={gearRef}
         type="button"
-        className="settings-gear"
+        className={`settings-gear${open ? ' settings-gear--open' : ''}`}
         aria-label="Graphics settings"
-        onClick={() => s.setPanelOpen(!s.panelOpen)}
+        aria-expanded={open}
+        onClick={() => s.setPanelOpen(!open)}
       >
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
           <path
@@ -74,12 +102,20 @@ export function SettingsPanel() {
         </svg>
       </button>
 
-      {s.panelOpen && (
-        <div className="settings-overlay" onClick={() => s.setPanelOpen(false)}>
-          <div className="settings" role="dialog" aria-label="Graphics settings" onClick={(e) => e.stopPropagation()}>
+      {shown && (
+        <div
+          className={`settings-overlay${leaving ? ' settings-overlay--exit' : ''}`}
+          onClick={close}
+        >
+          <div
+            className={`settings${leaving ? ' settings--exit' : ''}`}
+            role="dialog"
+            aria-label="Graphics settings"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="settings__head">
               <span className="settings__title">Graphics</span>
-              <button type="button" className="settings__close" aria-label="Close" onClick={() => s.setPanelOpen(false)}>
+              <button type="button" className="settings__close" aria-label="Close" onClick={close}>
                 ✕
               </button>
             </div>
