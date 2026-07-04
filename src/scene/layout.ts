@@ -121,6 +121,8 @@ export const BASKET = {
   w: 0.48,
   h: 0.29,
   d: 0.32,
+  /** flat woven caps on the bins — set true to restore lids */
+  showLids: false,
   /** centre x of the left and right bins */
   x: [SHELF.x - 0.265, SHELF.x + 0.265],
   /** centre z at rest (front lip slightly proud of the bookcase, like the photo) */

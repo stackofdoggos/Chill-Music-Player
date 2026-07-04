@@ -1,13 +1,14 @@
 import { useMemo, useRef } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox, useTexture } from "@react-three/drei";
+import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { easing } from "maath";
 import { dragActiveOrRecent, useStore } from "../../state/store";
 import { engine } from "../../audio/engine";
 import { BASKET, DISPLAY_SLOTS, SHELF, SHELF_BACK_INNER_Z, SLEEVE } from "../layout";
 import { AlbumSleeve } from "./AlbumSleeve";
+import { BasketShell } from "./BasketShell";
 
 /** deterministic PRNG so the decorative records never reshuffle */
 function mulberry32(a: number) {
@@ -161,39 +162,7 @@ function Basket({
         <boxGeometry args={[W - 0.04, H - 0.08, D - 0.04]} />
         <meshStandardMaterial color="#3a2c1e" roughness={1} />
       </mesh>
-      {/* woven shell */}
-      <RoundedBox
-        args={[W, H, D]}
-        radius={0.02}
-        smoothness={4}
-        position={[0, H / 2, 0]}
-        castShadow
-        receiveShadow
-        onClick={onClick}
-      >
-        <meshStandardMaterial
-          map={wicker.map}
-          normalMap={wicker.normalMap}
-          roughnessMap={wicker.roughnessMap}
-          normalScale={new THREE.Vector2(1, 1)}
-        />
-      </RoundedBox>
-      {/* braided rim */}
-      <RoundedBox
-        args={[W + 0.02, 0.03, D + 0.02]}
-        radius={0.012}
-        smoothness={4}
-        position={[0, H, 0]}
-        castShadow
-        onClick={onClick}
-      >
-        <meshStandardMaterial
-          map={wicker.map}
-          normalMap={wicker.normalMap}
-          roughnessMap={wicker.roughnessMap}
-          color="#c19a6b"
-        />
-      </RoundedBox>
+      <BasketShell wicker={wicker} onClick={onClick} />
       {/* handle cutout on the front face */}
       <mesh position={[0, H * 0.6, D / 2 + 0.012]} onClick={onClick}>
         <boxGeometry args={[0.1, 0.03, 0.006]} />
