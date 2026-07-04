@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { phaseAccentHex, phaseLabel, phaseMarks, phaseTrackGradient } from '../scene/dayNight'
 import { useStore } from '../state/store'
 
 const MARKS = phaseMarks()
 const TRACK_GRADIENT = phaseTrackGradient()
+const PANEL_MS = 320
 
 function MoonIcon() {
   return (
@@ -37,63 +38,127 @@ function SunIcon() {
   )
 }
 
+function CollapseIcon() {
+  return (
+    <svg className="daynight__chevron" viewBox="0 0 16 16" aria-hidden>
+      <path
+        d="M4.25 6.25 8 10 11.75 6.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function DayNightSlider() {
   const dayPhase = useStore((s) => s.dayPhase)
   const setDayPhase = useStore((s) => s.setDayPhase)
+  const [panelShown, setPanelShown] = useState(true)
+  const [panelLeaving, setPanelLeaving] = useState(false)
+  const [dotShown, setDotShown] = useState(false)
+  const [dotLeaving, setDotLeaving] = useState(false)
   const label = phaseLabel(dayPhase)
   const accent = useMemo(() => phaseAccentHex(dayPhase), [dayPhase])
   const fill = `${dayPhase * 100}%`
 
-  return (
-    <div
-      className="daynight"
-      style={
-        {
-          '--daynight-accent': accent,
-          '--daynight-fill': fill,
-          '--daynight-track': `linear-gradient(90deg, ${TRACK_GRADIENT})`,
-        } as React.CSSProperties
-      }
-      aria-label="Day-night lighting cycle"
-    >
-      <div className="daynight__header">
-        <span className="daynight__title">Light</span>
-        <span className="daynight__label">
-          <span className="daynight__swatch" aria-hidden />
-          {label}
-        </span>
-      </div>
+  const style = {
+    '--daynight-accent': accent,
+    '--daynight-fill': fill,
+    '--daynight-track': `linear-gradient(90deg, ${TRACK_GRADIENT})`,
+  } as React.CSSProperties
 
-      <div className="daynight__row">
-        <MoonIcon />
-        <div className="daynight__track-wrap">
-          <div className="daynight__channel">
-            <div className="daynight__track" />
-            <div className="daynight__fill" />
-            <div className="daynight__ticks" aria-hidden>
-              {MARKS.map(({ t, label: markLabel }) => (
-                <span
-                  key={markLabel}
-                  className="daynight__tick"
-                  style={{ left: `${t * 100}%` }}
-                  title={markLabel}
-                />
-              ))}
+  const collapse = () => {
+    setPanelLeaving(true)
+    window.setTimeout(() => {
+      setPanelShown(false)
+      setPanelLeaving(false)
+      setDotShown(true)
+    }, PANEL_MS)
+  }
+
+  const expand = () => {
+    setDotLeaving(true)
+    window.setTimeout(() => {
+      setDotShown(false)
+      setDotLeaving(false)
+      setPanelShown(true)
+    }, PANEL_MS)
+  }
+
+  return (
+    <div className="daynight-anchor" style={style}>
+      {dotShown && (
+        <button
+          type="button"
+          className={`daynight-dot${dotLeaving ? ' daynight-dot--exit' : ''}`}
+          onClick={expand}
+          aria-label={`Show lighting controls — ${label}`}
+          aria-expanded={false}
+        >
+          <span className="daynight__swatch daynight__swatch--solo" aria-hidden />
+        </button>
+      )}
+
+      {panelShown && (
+        <div
+          className={`daynight${panelLeaving ? ' daynight--exit' : ''}`}
+          aria-label="Day-night lighting cycle"
+          aria-expanded={true}
+        >
+          <div className="daynight__header">
+            <div className="daynight__rail">
+              <button
+                type="button"
+                className="daynight__collapse"
+                onClick={collapse}
+                aria-label="Hide lighting controls"
+              >
+                <CollapseIcon />
+              </button>
             </div>
+            <span className="daynight__label">
+              <span className="daynight__swatch" aria-hidden />
+              {label}
+            </span>
           </div>
-          <input
-            type="range"
-            className="daynight__input"
-            min={0}
-            max={1}
-            step={0.001}
-            value={dayPhase}
-            onChange={(e) => setDayPhase(parseFloat(e.target.value))}
-            aria-valuetext={label}
-          />
+
+          <div className="daynight__row">
+            <div className="daynight__rail">
+              <MoonIcon />
+            </div>
+            <div className="daynight__track-wrap">
+              <div className="daynight__channel">
+                <div className="daynight__track" />
+                <div className="daynight__fill" />
+                <div className="daynight__ticks" aria-hidden>
+                  {MARKS.map(({ t, label: markLabel }) => (
+                    <span
+                      key={markLabel}
+                      className="daynight__tick"
+                      style={{ left: `${t * 100}%` }}
+                      title={markLabel}
+                    />
+                  ))}
+                </div>
+              </div>
+              <input
+                type="range"
+                className="daynight__input"
+                min={0}
+                max={1}
+                step={0.001}
+                value={dayPhase}
+                onChange={(e) => setDayPhase(parseFloat(e.target.value))}
+                aria-valuetext={label}
+              />
+            </div>
+            <SunIcon />
+          </div>
         </div>
-        <SunIcon />
-      </div>
+      )}
     </div>
   )
 }
