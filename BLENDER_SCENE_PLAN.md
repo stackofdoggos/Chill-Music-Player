@@ -760,10 +760,10 @@ Lean back **0.13 rad** against back panel. Rotation: **Y = -90°** (-π/2), **X 
 | Empty | World position (x, y, z) | Row |
 |-------|--------------------------|-----|
 | `sleeve_slot_0` | (**0.703**, **1.477**, **-2.142**) | Top (row 0, col 0) |
-| `sleeve_slot_1` | (**1.100**, **1.477**, **-2.142**) | Top col 1 |
+| `sleeve_slot_1` | (**1.1**, **1.477**, **-2.142**) | Top col 1 |
 | `sleeve_slot_2` | (**1.497**, **1.477**, **-2.142**) | Top col 2 |
 | `sleeve_slot_3` | (**0.703**, **1.047**, **-2.142**) | Middle (row 1) |
-| `sleeve_slot_4` | (**1.100**, **1.047**, **-2.142**) | Middle col 1 |
+| `sleeve_slot_4` | (**1.1**, **1.047**, **-2.142**) | Middle col 1 |
 | `sleeve_slot_5` | (**1.497**, **1.047**, **-2.142**) | Middle col 2 |
 
 Sleeve box size (for clearance, not modeled): **0.0145 × 0.315 × 0.315 m** (thin × square).
@@ -967,6 +967,20 @@ Credits: see `public/textures/CREDITS.md`.
 - Keep base wall/ceiling colors **neutral** — the app multiplies/tints them for day/night
 - Acrylic lid: alpha blend; may need app-side material override if export looks wrong
 - Target texture resolution **1K–2K** per material for web performance
+
+---
+
+## Keeping coordinates in sync
+
+`src/scene/layout.ts` is the source of truth. After editing it or Section 15 of this doc, run:
+
+```bash
+npm run verify-blender-plan          # fail if the plan doc drifts
+node scripts/verify-blender-plan.mjs # dump full JSON to stdout
+node scripts/verify-blender-plan.mjs --write  # write scripts/blender-coordinates.json
+```
+
+Feed `scripts/blender-coordinates.json` to a Blender agent for machine-readable anchors.
 
 ---
 

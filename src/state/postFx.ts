@@ -16,8 +16,8 @@ export const POST_FX_DEFAULTS: PostFxSettings = {
   chromaticY: 0.0002,
   chromaticRadial: true,
   chromaticModulation: 0.18,
-  grain: 0.1,
-  temporalBlend: 0.14,
+  grain: 0.35,
+  temporalBlend: 0.02,
   softness: 0.22,
   softnessRadius: 0.75,
 }

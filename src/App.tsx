@@ -9,7 +9,6 @@ import { requestUnfocus, useStore } from './state/store'
 import { useUi } from './state/ui'
 import { SettingsGear } from './ui/SettingsPanel'
 import { TopMenuOverlay } from './ui/TopMenuOverlay'
-import { PostFxDebug } from './ui/PostFxDebug'
 import { engine } from './audio/engine'
 
 const BOOT_STATUS = [
@@ -119,7 +118,6 @@ export default function App() {
       {entered && <SettingsGear />}
       {entered && <LightDot />}
       {entered && <TopMenuOverlay />}
-      {import.meta.env.DEV && entered && <PostFxDebug />}
     </>
   )
 }
