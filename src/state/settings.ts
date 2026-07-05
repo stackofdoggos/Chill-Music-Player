@@ -13,13 +13,11 @@ export interface GraphicsSettings {
   lightShafts: ShaftMode
   /** auto = 1× haze at golden hour/sunset, device DPR at night */
   resolutionMode: ResolutionMode
-  panelOpen: boolean
 
   setSoftShadows: (v: boolean) => void
   setAmbientOcclusion: (v: boolean) => void
   setLightShafts: (v: ShaftMode) => void
   setResolutionMode: (v: ResolutionMode) => void
-  setPanelOpen: (v: boolean) => void
 }
 
 type PersistedV0 = {
@@ -37,13 +35,11 @@ export const useSettings = create<GraphicsSettings>()(
       ambientOcclusion: true,
       lightShafts: 'pronounced',
       resolutionMode: 'auto',
-      panelOpen: false,
 
       setSoftShadows: (softShadows) => set({ softShadows }),
       setAmbientOcclusion: (ambientOcclusion) => set({ ambientOcclusion }),
       setLightShafts: (lightShafts) => set({ lightShafts }),
       setResolutionMode: (resolutionMode) => set({ resolutionMode }),
-      setPanelOpen: (panelOpen) => set({ panelOpen }),
     }),
     {
       name: 'record-room-graphics',

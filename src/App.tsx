@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Experience } from './scene/Experience'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { NowPlaying } from './ui/NowPlaying'
-import { DayNightSlider } from './ui/DayNightSlider'
+import { LightDot } from './ui/DayNightSlider'
 import { VinylFavicon } from './ui/Favicon'
 import { loadAlbums } from './albums'
 import { requestUnfocus, useStore } from './state/store'
-import { useSettings } from './state/settings'
-import { SettingsPanel } from './ui/SettingsPanel'
+import { useUi } from './state/ui'
+import { SettingsGear } from './ui/SettingsPanel'
+import { TopMenuOverlay } from './ui/TopMenuOverlay'
 import { engine } from './audio/engine'
 
 const BOOT_STATUS = [
@@ -72,7 +73,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (useSettings.getState().panelOpen) return // settings panel handles its own keys
+      if (useUi.getState().activeMenu !== 'none') return
       if (e.key === 'Escape') requestUnfocus()
       else if (e.key === 'f' || e.key === 'F') useStore.getState().flipSleeve()
       else if (e.key === 'p' || e.key === 'P') {
@@ -114,8 +115,9 @@ export default function App() {
         />
       )}
       {entered && <NowPlaying />}
-      {entered && <DayNightSlider />}
-      {entered && <SettingsPanel />}
+      {entered && <SettingsGear />}
+      {entered && <LightDot />}
+      {entered && <TopMenuOverlay />}
     </>
   )
 }

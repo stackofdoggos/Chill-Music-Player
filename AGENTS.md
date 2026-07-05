@@ -16,13 +16,15 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | File | Owns |
 | --- | --- |
 | `src/state/store.ts` | zustand store: `view`, `selectedAlbumId` (shelf browse), `platterAlbumId`, `shelfPhase` + `recordPhase`, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
-| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; dev slider in `src/ui/DayNightSlider.tsx`. |
+| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; panel in `DayNightMenu` (`src/ui/DayNightSlider.tsx`). |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
 | `src/scene/Volumetrics.tsx` | Fake window sun shafts + dust motes (additive quads/points, no raymarch). Intensity = `shaftStrength(atmosphere)` × mode from settings. |
-| `src/state/settings.ts` | Graphics settings zustand store (persisted to localStorage): `softShadows` (VSM vs PCF), `ambientOcclusion` (N8AO), `lightShafts` (off/subtle/pronounced), `resolutionMode` (auto/standard/high — auto blends 1× DPR at golden hour/sunset with device DPR at night). Panel UI in `src/ui/SettingsPanel.tsx` (gear, top-left). Dev handle: `__settings`. |
+| `src/state/settings.ts` | Graphics settings zustand store (persisted to localStorage): `softShadows` (VSM vs PCF), `ambientOcclusion` (N8AO), `lightShafts` (off/subtle/pronounced), `resolutionMode` (auto/standard/high — auto blends 1× DPR at golden hour/sunset with device DPR at night). Panel body in `SettingsMenu` (`src/ui/SettingsPanel.tsx`). Dev handle: `__settings`. |
+| `src/state/ui.ts` | Top-left menu chrome: `activeMenu` (`none \| settings \| light`), `toggleMenu()`, `setActiveMenu()`. Single shared blur overlay in `src/ui/TopMenuOverlay.tsx` — never mount a second backdrop when swapping cog ↔ light dot. |
+| `src/ui/TopMenuOverlay.tsx` | One `topmenu-overlay` blur for both menus; panel swap animates exit → enter without re-stacking filters. Escape handler lives here. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
 | `src/scene/Player/*` | Chassis, platter, tonearm (drag → groove radius → seek), knobs, acrylic lid. |
 | `src/scene/Shelf/*` | Freestanding walnut bookcase (PBR maps in `public/textures/`, CC0 — see `public/textures/CREDITS.md`): 3+3 interactive albums face-forward on the top two shelves; albums with index >= `DISPLAY_SLOTS` (6) live inside two pull-out wicker bins on the floor (bulk storage). Decorative spine row on the middle shelf. Also album sleeves (canvas textures from cover art) and the vinyl disc mesh. |
@@ -142,6 +144,13 @@ __engine.getProgress()                                   // should advance while
    intersections at a screen point, nearest first — use it whenever a click "does nothing".
    Note it ignores `visible=false` differences from r3f's raycaster; named meshes
    (`arm-base`, `arm-pivot-column`) read clearest.
+15. **Escape must not highlight UI triggers.** Closing a panel/overlay with Escape returns
+   focus to the button that opened it (gear, light dot, etc.), which shows a focus ring or
+   looks “stuck” highlighted. On Escape dismiss, call `blurMenuTriggers()` in
+   `TopMenuOverlay.tsx`: `requestAnimationFrame` → `.blur()` on `.settings-gear`,
+   `.daynight-dot`, and `document.activeElement`. **Defer one frame** so blur runs after the
+   browser’s post-unmount focus restore. Apply the same pattern to any new Escape-dismissed
+   overlay — never leave the opener focused/highlighted.
 
 ## Verification checklist
 
