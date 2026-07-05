@@ -1,6 +1,6 @@
 import { Suspense, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, Bloom, N8AO, Vignette } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, N8AO, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { requestUnfocus, useStore } from '../state/store'
 import { useSettings } from '../state/settings'
@@ -60,20 +60,28 @@ function SceneBackground() {
   return null
 }
 
-function AtmospherePost() {
+function AtmosphereEffects({ ao }: { ao: boolean }) {
   const dayPhase = useStore((s) => s.dayPhase)
-  const ao = useSettings((s) => s.ambientOcclusion)
   const a = sampleAtmosphere(dayPhase)
-  return ao ? (
-    <EffectComposer multisampling={4}>
-      <N8AO aoRadius={0.28} intensity={2.6} distanceFalloff={0.6} halfRes />
+  return (
+    <>
+      {ao && <N8AO aoRadius={0.28} intensity={2.6} distanceFalloff={0.6} halfRes />}
       <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
+      <ChromaticAberration
+        offset={[0.00035, 0.0002]}
+        radialModulation
+        modulationOffset={0.18}
+      />
       <Vignette eskil={false} offset={a.vignetteOffset} darkness={a.vignetteDarkness} />
-    </EffectComposer>
-  ) : (
+    </>
+  )
+}
+
+function AtmospherePost() {
+  const ao = useSettings((s) => s.ambientOcclusion)
+  return (
     <EffectComposer multisampling={4}>
-      <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
-      <Vignette eskil={false} offset={a.vignetteOffset} darkness={a.vignetteDarkness} />
+      <AtmosphereEffects ao={ao} />
     </EffectComposer>
   )
 }
