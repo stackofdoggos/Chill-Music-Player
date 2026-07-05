@@ -140,6 +140,14 @@ export function SettingsMenu({
           ]}
         />
       </div>
+
+      <div className="settings__row">
+        <div>
+          <div className="settings__label">Surface crackle</div>
+          <div className="settings__hint">Quiet groove noise while the needle is down</div>
+        </div>
+        <Toggle checked={s.crackle} onChange={s.setCrackle} />
+      </div>
     </div>
   )
 }

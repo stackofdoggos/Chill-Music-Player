@@ -1,6 +1,7 @@
 import { buildSfx, type SfxName } from './sfx'
 import { trackUrl, type Album } from '../albums'
 import { useStore } from '../state/store'
+import { useSettings } from '../state/settings'
 
 const SPIN_UP_RATE = 0.9 // platter acceleration, rev-factor per second
 const SPIN_DOWN_RATE = 0.55
@@ -352,6 +353,7 @@ class AudioEngine {
   }
 
   private crackleLevel() {
+    if (!useSettings.getState().crackle) return 0
     return 0.10
   }
 
