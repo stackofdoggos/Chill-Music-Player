@@ -1,21 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { createPortal, useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
 import { easing } from 'maath'
 import { dragActiveOrRecent, markDragEnd, useStore } from '../../state/store'
 import { engine } from '../../audio/engine'
+import { useSceneModel } from '../SceneModel'
 import { BODY } from '../layout'
 
 const FACE_Z = BODY.d / 2
 const Y = BODY.h * 0.5
+const SPEED_X = 0.155
 
-const ALU = { color: '#dad8d4', metalness: 0.85, roughness: 0.3 }
+function applyVolume(v: number) {
+  const st = useStore.getState()
+  const clamped = THREE.MathUtils.clamp(v, 0, 1)
+  if (clamped === st.volume) return
+  st.setVolume(clamped)
+  engine.setVolume(clamped)
+}
 
 function PowerSwitch() {
+  const { nodes } = useSceneModel()
+  const pivot = nodes.switch_power
+  const lever = nodes.switch_lever
   const power = useStore((s) => s.power)
-  const lever = useRef<THREE.Mesh>(null)
   const [hover, setHover] = useState(false)
   useCursor(hover)
 
@@ -28,31 +38,26 @@ function PowerSwitch() {
   }
 
   useFrame((_, dt) => {
-    if (lever.current) easing.damp(lever.current.rotation, 'x', power ? -0.55 : 0.55, 0.08, dt)
+    if (lever) easing.damp(lever.rotation, 'x', power ? -0.55 : 0.55, 0.08, dt)
+    const mat = (lever as THREE.Mesh | undefined)?.material as THREE.MeshStandardMaterial | undefined
+    if (mat) mat.color.set(power ? '#e0552c' : '#2e2e30')
   })
 
-  return (
-    <group
-      position={[0.09, Y, FACE_Z]}
-      onClick={toggle}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-    >
-      <mesh>
-        <boxGeometry args={[0.022, 0.034, 0.004]} />
-        <meshStandardMaterial color="#bdbbb7" metalness={0.6} roughness={0.4} />
-      </mesh>
-      <mesh ref={lever} position-z={0.004}>
-        <boxGeometry args={[0.012, 0.008, 0.014]} />
-        <meshStandardMaterial color={power ? '#e0552c' : '#2e2e30'} roughness={0.45} />
-      </mesh>
-    </group>
+  if (!pivot) return null
+  return createPortal(
+    <mesh visible={false} onClick={toggle} onPointerOver={() => setHover(true)} onPointerOut={() => setHover(false)}>
+      <boxGeometry args={[0.04, 0.05, 0.03]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>,
+    pivot,
   )
 }
 
 function SpeedKnob() {
+  const { nodes } = useSceneModel()
+  const pivot = nodes.knob_speed
+  const playerRoot = nodes.player_root
   const speed = useStore((s) => s.speed)
-  const knob = useRef<THREE.Group>(null)
   const [hover, setHover] = useState(false)
   useCursor(hover)
 
@@ -67,57 +72,53 @@ function SpeedKnob() {
   }
 
   useFrame((_, dt) => {
-    if (knob.current) easing.damp(knob.current.rotation, 'z', speed === 33 ? 0.4 : -0.4, 0.07, dt)
+    if (pivot) easing.damp(pivot.rotation, 'z', speed === 33 ? 0.4 : -0.4, 0.07, dt)
   })
 
+  if (!pivot || !playerRoot) return null
   return (
-    <group
-      position={[0.155, Y, FACE_Z]}
-      onClick={toggle}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-    >
-      <group ref={knob}>
-        <mesh rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.0155, 0.0155, 0.014, 32]} />
-          <meshStandardMaterial {...ALU} />
-        </mesh>
-        <mesh position={[0, 0.0095, 0.0072]}>
-          <boxGeometry args={[0.0022, 0.011, 0.0012]} />
-          <meshStandardMaterial color="#2e2e30" roughness={0.5} />
-        </mesh>
-      </group>
-      {/* 33 / 45 position dots */}
-      <mesh position={[-0.0095, 0.021, 0]}>
-        <sphereGeometry args={[0.0016, 8, 8]} />
-        <meshStandardMaterial color="#5a5a5c" />
-      </mesh>
-      <mesh position={[0.0095, 0.021, 0]}>
-        <sphereGeometry args={[0.0016, 8, 8]} />
-        <meshStandardMaterial color="#e0552c" />
-      </mesh>
-    </group>
+    <>
+      {createPortal(
+        <>
+          {/* black tick on the speed knob face — sits just proud of the GLB mesh cap */}
+          <mesh position={[0, 0.0055, 0.0155]}>
+            <boxGeometry args={[0.0014, 0.009, 0.0006]} />
+            <meshStandardMaterial color="#2e2e30" roughness={0.5} />
+          </mesh>
+          <mesh visible={false} onClick={toggle} onPointerOver={() => setHover(true)} onPointerOut={() => setHover(false)}>
+            <cylinderGeometry args={[0.03, 0.03, 0.02, 16]} />
+            <meshBasicMaterial transparent opacity={0} />
+          </mesh>
+        </>,
+        pivot,
+      )}
+      {createPortal(
+        <>
+          <mesh position={[SPEED_X - 0.0095, Y + 0.021, FACE_Z]}>
+            <sphereGeometry args={[0.0016, 8, 8]} />
+            <meshStandardMaterial color="#5a5a5c" />
+          </mesh>
+          <mesh position={[SPEED_X + 0.0095, Y + 0.021, FACE_Z]}>
+            <sphereGeometry args={[0.0016, 8, 8]} />
+            <meshStandardMaterial color="#e0552c" />
+          </mesh>
+        </>,
+        playerRoot,
+      )}
+    </>
   )
 }
 
-function applyVolume(v: number) {
-  const st = useStore.getState()
-  const clamped = THREE.MathUtils.clamp(v, 0, 1)
-  if (clamped === st.volume) return
-  st.setVolume(clamped)
-  engine.setVolume(clamped)
-}
-
 function VolumeKnob() {
+  const { nodes } = useSceneModel()
+  const pivot = nodes.knob_volume
   const volume = useStore((s) => s.volume)
   const view = useStore((s) => s.view)
-  const knob = useRef<THREE.Group>(null)
   const [hover, setHover] = useState(false)
   const drag = useRef<{ startY: number; startV: number; step: number } | null>(null)
   const moved = useRef(false)
   useCursor(hover, drag.current ? 'grabbing' : 'grab')
 
-  // arrow keys adjust by one detent while in the volume close-up
   useEffect(() => {
     if (view !== 'volume') return
     const onKey = (e: KeyboardEvent) => {
@@ -170,36 +171,36 @@ function VolumeKnob() {
   }
 
   useFrame((_, dt) => {
-    if (knob.current) easing.damp(knob.current.rotation, 'z', THREE.MathUtils.lerp(2.2, -2.2, volume), 0.06, dt)
+    if (pivot) easing.damp(pivot.rotation, 'z', THREE.MathUtils.lerp(2.2, -2.2, volume), 0.06, dt)
   })
 
-  return (
-    <group
-      position={[0.235, Y, FACE_Z]}
-      onClick={onClick}
-      onPointerDown={onDown}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-    >
-      <group ref={knob}>
-        <mesh rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.024, 0.024, 0.018, 48]} />
-          <meshStandardMaterial {...ALU} />
-        </mesh>
-        {/* finger dimple ring */}
-        <mesh rotation-x={Math.PI / 2} position-z={0.0092}>
-          <torusGeometry args={[0.016, 0.0018, 12, 48]} />
-          <meshStandardMaterial color="#c2c0bc" metalness={0.8} roughness={0.35} />
-        </mesh>
-        <mesh position={[0, 0.016, 0.0095]}>
-          <boxGeometry args={[0.0026, 0.014, 0.0014]} />
-          <meshStandardMaterial color="#2e2e30" roughness={0.5} />
-        </mesh>
-      </group>
-    </group>
+  if (!pivot) return null
+  return createPortal(
+    <>
+      <mesh rotation-x={Math.PI / 2} position-z={0.0092}>
+        <torusGeometry args={[0.016, 0.0018, 12, 48]} />
+        <meshStandardMaterial color="#c2c0bc" metalness={0.8} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0.0055, 0.0195]}>
+        <boxGeometry args={[0.0026, 0.014, 0.0014]} />
+        <meshStandardMaterial color="#2e2e30" roughness={0.5} />
+      </mesh>
+      <mesh
+        visible={false}
+        onClick={onClick}
+        onPointerDown={onDown}
+        onPointerOver={() => setHover(true)}
+        onPointerOut={() => setHover(false)}
+      >
+        <cylinderGeometry args={[0.04, 0.04, 0.03, 16]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+    </>,
+    pivot,
   )
 }
 
+/** Knob visuals live in room.glb; empties are rotated here. Dial markings are code-driven. */
 export function Knobs() {
   return (
     <>

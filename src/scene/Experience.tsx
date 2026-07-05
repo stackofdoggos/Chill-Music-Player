@@ -9,6 +9,7 @@ import { STATIONS } from './layout'
 import { effectiveDpr, sampleAtmosphere } from './dayNight'
 import { PostFxEffects } from './PostFxEffects'
 import { Lighting } from './Lighting'
+import { SceneModelProvider } from './SceneModel'
 import { Room } from './Room'
 import { CameraRig } from './CameraRig'
 import { Player } from './Player/Player'
@@ -87,10 +88,12 @@ export function Experience() {
       <ShadowQuality />
       <SceneBackground />
       <Lighting />
-      <Room />
-      <Player />
       <Suspense fallback={null}>
-        <Shelf />
+        <SceneModelProvider>
+          <Room />
+          <Player />
+          <Shelf />
+        </SceneModelProvider>
       </Suspense>
       <RecordTransit />
       <Volumetrics />
