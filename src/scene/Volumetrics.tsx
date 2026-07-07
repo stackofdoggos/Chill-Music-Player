@@ -7,10 +7,9 @@ import { useStore } from '../state/store'
 import { useSettings } from '../state/settings'
 
 /**
- * Cheap "volumetric" sun shafts + dust motes at the window. No raymarching:
- * a few additive cross-plane quads with an animated falloff shader, plus a
- * small drifting point cloud. Intensity follows the day-night atmosphere
- * (nothing renders at night) and the graphics settings mode.
+ * Cheap "volumetric" sun shafts at the window. No raymarching: a few additive
+ * cross-plane quads with an animated falloff shader. Intensity follows the
+ * day-night atmosphere (nothing renders at night) and the graphics settings mode.
  */
 
 const WINDOW_POS = new THREE.Vector3(ROOM.w / 2 - 0.02, 1.45, -0.55)
@@ -53,42 +52,12 @@ const shaftFrag = /* glsl */ `
   }
 `
 
-const moteVert = /* glsl */ `
-  attribute float aSeed;
-  uniform float uTime;
-  varying float vFade;
-  void main() {
-    vec3 p = position;
-    // slow downward drift with sideways wander, wrapping along the beam
-    float t = uTime * (0.014 + aSeed * 0.012);
-    p.y = mod(p.y - t, ${SHAFT_LEN.toFixed(1)}) ;
-    p.x += sin(uTime * 0.35 + aSeed * 40.0) * 0.035;
-    p.z += cos(uTime * 0.28 + aSeed * 60.0) * 0.035;
-    vFade = smoothstep(0.0, 0.5, p.y) * (1.0 - smoothstep(${(SHAFT_LEN - 0.8).toFixed(1)}, ${SHAFT_LEN.toFixed(1)}, p.y));
-    vec4 mv = modelViewMatrix * vec4(p - vec3(0.0, ${SHAFT_LEN.toFixed(1)}, 0.0), 1.0);
-    // ~4–8 mm motes projected to pixels
-    gl_PointSize = clamp((0.004 + aSeed * 0.004) * 2200.0 / -mv.z, 1.5, 8.0);
-    gl_Position = projectionMatrix * mv;
-  }
-`
-
-const moteFrag = /* glsl */ `
-  uniform vec3 uColor;
-  uniform float uIntensity;
-  varying float vFade;
-  void main() {
-    float d = length(gl_PointCoord - 0.5);
-    float a = (1.0 - smoothstep(0.12, 0.5, d)) * vFade * uIntensity * 0.5;
-    gl_FragColor = vec4(uColor * a, a);
-  }
-`
-
 export function Volumetrics() {
   const mode = useSettings((s) => s.lightShafts)
   const group = useRef<THREE.Group>(null)
 
-  const { shaftMat, moteMat, moteGeo } = useMemo(() => {
-    const shaftMat = new THREE.ShaderMaterial({
+  const shaftMat = useMemo(() => {
+    return new THREE.ShaderMaterial({
       vertexShader: shaftVert,
       fragmentShader: shaftFrag,
       uniforms: {
@@ -101,31 +70,6 @@ export function Volumetrics() {
       depthWrite: false,
       side: THREE.DoubleSide,
     })
-    const moteMat = new THREE.ShaderMaterial({
-      vertexShader: moteVert,
-      fragmentShader: moteFrag,
-      uniforms: {
-        uColor: { value: new THREE.Color('#ffe0b0') },
-        uIntensity: { value: 0 },
-        uTime: { value: 0 },
-      },
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-    const N = 140
-    const pos = new Float32Array(N * 3)
-    const seed = new Float32Array(N)
-    for (let i = 0; i < N; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 1.2
-      pos[i * 3 + 1] = Math.random() * SHAFT_LEN
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 0.9
-      seed[i] = Math.random()
-    }
-    const moteGeo = new THREE.BufferGeometry()
-    moteGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-    moteGeo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1))
-    return { shaftMat, moteMat, moteGeo }
   }, [])
 
   useFrame((state) => {
@@ -137,9 +81,6 @@ export function Volumetrics() {
     shaftMat.uniforms.uIntensity.value = intensity
     shaftMat.uniforms.uTime.value = state.clock.elapsedTime
     ;(shaftMat.uniforms.uColor.value as THREE.Color).copy(a.windowEmissive)
-    moteMat.uniforms.uIntensity.value = raw * (mode === 'pronounced' ? 1.6 : 0.9)
-    moteMat.uniforms.uTime.value = state.clock.elapsedTime
-    ;(moteMat.uniforms.uColor.value as THREE.Color).copy(a.windowEmissive)
     group.current.visible = intensity > 0.003
 
     // aim the beam from the window along the current sun direction
@@ -164,7 +105,6 @@ export function Volumetrics() {
           </mesh>
         </group>
       ))}
-      <points geometry={moteGeo} material={moteMat} />
     </group>
   )
 }

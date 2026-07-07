@@ -9,7 +9,7 @@ export interface GraphicsSettings {
   softShadows: boolean
   /** N8AO screen-space ambient occlusion */
   ambientOcclusion: boolean
-  /** window light shafts + dust motes */
+  /** window light shafts */
   lightShafts: ShaftMode
   /** auto = 1× haze at golden hour/sunset, device DPR at night */
   resolutionMode: ResolutionMode
