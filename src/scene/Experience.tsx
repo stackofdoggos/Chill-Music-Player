@@ -16,6 +16,7 @@ import { Player } from './Player/Player'
 import { Shelf } from './Shelf/Shelf'
 import { RecordTransit } from './RecordTransit'
 import { Volumetrics } from './Volumetrics'
+import { SceneBootReporter } from './SceneBootReporter'
 
 function EngineUpdater() {
   useFrame((_, dt) => engine.update(Math.min(dt, 0.1)))
@@ -65,7 +66,7 @@ function SceneBackground() {
 function AtmospherePost() {
   const ao = useSettings((s) => s.ambientOcclusion)
   return (
-    <EffectComposer multisampling={4}>
+    <EffectComposer multisampling={0}>
       <PostFxEffects ao={ao} />
     </EffectComposer>
   )
@@ -85,6 +86,7 @@ export function Experience() {
       }}
       onPointerMissed={() => requestUnfocus()}
     >
+      <SceneBootReporter />
       <ShadowQuality />
       <SceneBackground />
       <Lighting />

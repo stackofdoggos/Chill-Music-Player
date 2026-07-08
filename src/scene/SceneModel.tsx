@@ -12,14 +12,15 @@ import { useGLTF } from '@react-three/drei'
 import type { MeshStandardMaterial } from 'three'
 import * as THREE from 'three'
 import { engine } from '../audio/engine'
-import { assetUrl } from '../assetUrl'
 import { dragActiveOrRecent, requestUnfocus, useStore } from '../state/store'
 import { ANCHOR_NAMES } from './anchors'
 import { isShelfFocusPoint } from './layout'
 import { sampleAtmosphere } from './dayNight'
+import { DeskTop } from './DeskTop'
 import { woodTexture } from './textures'
+import { GLB_PATH, GLB_USE_DRACO } from './preloadScene'
 
-const GLB_PATH = assetUrl('models/room.glb')
+const GLB_PATH_LOCAL = GLB_PATH
 
 type SceneModelContextValue = {
   nodes: Record<string, THREE.Object3D>
@@ -40,7 +41,36 @@ const HIDDEN_MESHES = new Set([
   'wall_art_frame',
   'wall_art_mat',
   'wall_art_painting',
+  'desk_top',
 ])
+
+/** Prop mesh name prefixes after GLB export (parent `prop_*` empties may be applied away). */
+const PROP_MESH_RE =
+  /^(Leaves_Leaves|Plant_Pot_Pot|Retopo_New_Tree|alarm_clock|houd_hand|minute_hand|second_hand|ceramic_vase|Mesh_0_Material)/
+
+function tagDecorProps(root: THREE.Object3D) {
+  root.traverse((obj) => {
+    let p: THREE.Object3D | null = obj
+    while (p) {
+      if (p.name.startsWith('prop_')) {
+        obj.userData.decorProp = true
+        return
+      }
+      p = p.parent
+    }
+  })
+}
+
+function isDecorProp(obj: THREE.Object3D): boolean {
+  if (obj.userData.decorProp) return true
+  if (PROP_MESH_RE.test(obj.name)) return true
+  let o: THREE.Object3D | null = obj
+  while (o) {
+    if (o.name.startsWith('prop_')) return true
+    o = o.parent
+  }
+  return false
+}
 
 /** GLB basket shells replaced by code-driven BasketShell (correct weave UVs) */
 const BASKET_SHELL_RE =
@@ -72,11 +102,14 @@ function setupMesh(obj: THREE.Object3D) {
 }
 
 export function SceneModelProvider({ children }: { children: ReactNode }) {
-  const gltf = useGLTF(GLB_PATH)
+  const gltf = useGLTF(GLB_PATH_LOCAL, GLB_USE_DRACO)
   const { scene, nodes } = useMemo(() => {
-    const clone = gltf.scene.clone(true)
-    clone.traverse(setupMesh)
-    return { scene: clone, nodes: buildNodeMap(clone) }
+    if (!gltf.scene.userData.__roomSetup) {
+      gltf.scene.traverse(setupMesh)
+      tagDecorProps(gltf.scene)
+      gltf.scene.userData.__roomSetup = true
+    }
+    return { scene: gltf.scene, nodes: buildNodeMap(gltf.scene) }
   }, [gltf.scene])
 
   const backWallMat = useRef<MeshStandardMaterial | null>(null)
@@ -108,7 +141,84 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       mat.needsUpdate = true
     }
     applyWood('floor', 5, 5, true, 0.7)
-    applyWood('desk_top', 2, 1, false, 0.55)
+
+    const applyLacquer = (
+      name: string,
+      {
+        roughness,
+        metalness,
+        clearcoat,
+        clearcoatRoughness,
+        envMapIntensity,
+      }: {
+        roughness: number
+        metalness: number
+        clearcoat: number
+        clearcoatRoughness: number
+        envMapIntensity: number
+      },
+    ) => {
+      const mesh = nodes[name] as THREE.Mesh | undefined
+      const raw = mesh?.material
+      const mat = (Array.isArray(raw) ? raw[0] : raw) as THREE.MeshStandardMaterial | undefined
+      if (!mat) return
+      const lacquer = new THREE.MeshPhysicalMaterial({
+        color: mat.color,
+        roughness,
+        metalness,
+        clearcoat,
+        clearcoatRoughness,
+        envMapIntensity,
+      })
+      mesh!.material = lacquer
+    }
+    applyLacquer('player_chassis', {
+      roughness: 0.16,
+      metalness: 0.06,
+      clearcoat: 0.78,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 1.25,
+    })
+    applyLacquer('player_deck', {
+      roughness: 0.22,
+      metalness: 0.18,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 1.05,
+    })
+
+    // Acrylic lid — boost env reflections; GLB exports KHR_materials_transmission on lid_acrylic
+    nodes.lid_hinge?.traverse((obj) => {
+      if (obj.type !== 'Mesh') return
+      const mesh = obj as THREE.Mesh
+      const raw = mesh.material
+      const mats = Array.isArray(raw) ? raw : raw ? [raw] : []
+      for (let i = 0; i < mats.length; i++) {
+        const m = mats[i]
+        if (m instanceof THREE.MeshPhysicalMaterial) {
+          m.envMapIntensity = 1.65
+          m.roughness = 0.013
+          m.transmission = Math.min(1, (m.transmission || 0.92) + 0.053)
+          m.needsUpdate = true
+        } else if (m instanceof THREE.MeshStandardMaterial) {
+          // Fallback if an old GLB is still cached without transmission
+          const phys = new THREE.MeshPhysicalMaterial({
+            color: m.color,
+            roughness: 0.02,
+            metalness: 0,
+            transmission: 0.973,
+            thickness: 0.012,
+            ior: 1.45,
+            envMapIntensity: 1.4,
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          })
+          if (Array.isArray(mesh.material)) mesh.material[i] = phys
+          else mesh.material = phys
+        }
+      }
+    })
 
     if (import.meta.env.DEV) {
       ;(window as Window & { __anchors?: () => Record<string, number[]> }).__anchors = () => {
@@ -191,7 +301,11 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       }
       return
     }
-    if (name.startsWith('spine_') || name === 'plant_pot' || name.startsWith('plant_leaf')) {
+    if (isDecorProp(e.object)) {
+      e.stopPropagation()
+      return
+    }
+    if (name.startsWith('spine_')) {
       e.stopPropagation()
       if (dragActiveOrRecent()) return
       const action = useStore.getState().clickShelfBackdrop()
@@ -215,9 +329,8 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
   return (
     <SceneModelContext.Provider value={value}>
       <primitive object={scene} onClick={onPointer} />
+      <DeskTop />
       {children}
     </SceneModelContext.Provider>
   )
 }
-
-useGLTF.preload(GLB_PATH)
