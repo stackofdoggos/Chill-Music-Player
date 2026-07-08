@@ -37,7 +37,7 @@ export const useSettings = create<GraphicsSettings>()(
       softShadows: true,
       ambientOcclusion: true,
       lightShafts: 'pronounced',
-      resolutionMode: 'auto',
+      resolutionMode: 'high',
       crackle: true,
 
       setSoftShadows: (softShadows) => set({ softShadows }),

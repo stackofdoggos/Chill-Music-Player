@@ -7,10 +7,12 @@ import { sampleAtmosphere } from './dayNight'
 import { SoftnessEffect } from './effects/SoftnessEffect'
 import { TemporalBlendEffect } from './effects/TemporalBlendEffect'
 import { POST_FX_DEFAULTS, usePostFx } from '../state/postFx'
+import { useSettings } from '../state/settings'
 import { useStore } from '../state/store'
 
 export function PostFxEffects({ ao }: { ao: boolean }) {
   const dayPhase = useStore((s) => s.dayPhase)
+  const resolutionMode = useSettings((s) => s.resolutionMode)
   const a = sampleAtmosphere(dayPhase)
 
   const softnessEffect = useMemo(() => new SoftnessEffect(), [])
@@ -31,8 +33,9 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
 
   useFrame(() => {
     const s = usePostFx.getState()
+    const autoBlurScale = resolutionMode === 'auto' ? 1 / 3 : 1
     softnessEffect.radius = s.softnessRadius
-    softnessEffect.blendMode.setOpacity(s.softness)
+    softnessEffect.blendMode.setOpacity(s.softness * autoBlurScale)
     temporalEffect.blend = s.temporalBlend
     grainEffect.blendMode.setOpacity(s.grain)
     chromaticEffect.offset.set(s.chromaticX, s.chromaticY)
