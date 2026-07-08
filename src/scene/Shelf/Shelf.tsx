@@ -5,6 +5,7 @@ import { createPortal } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { easing } from "maath";
+import { assetUrl } from "../../assetUrl";
 import { dragActiveOrRecent, useStore } from "../../state/store";
 import { engine } from "../../audio/engine";
 import { useSceneModel } from "../SceneModel";
@@ -36,9 +37,9 @@ function Basket({ index, seed, reserved }: { index: number; seed: number; reserv
   const { w: W, h: H, d: D } = BASKET;
 
   const [wickerDiff, wickerNor, wickerRough] = useTexture([
-    "/textures/wicker_diff.jpg",
-    "/textures/wicker_nor.jpg",
-    "/textures/wicker_rough.jpg",
+    assetUrl("textures/wicker_diff.jpg"),
+    assetUrl("textures/wicker_nor.jpg"),
+    assetUrl("textures/wicker_rough.jpg"),
   ]);
 
   const wicker = useMemo(() => {

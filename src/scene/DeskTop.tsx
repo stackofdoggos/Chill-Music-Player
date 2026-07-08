@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { RoundedBox, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+import { assetUrl } from '../assetUrl'
 import { DESK } from './layout'
 
 const TOP_THICK = 0.05
@@ -8,9 +9,9 @@ const BEVEL = 0.012
 
 export function DeskTop() {
   const [diff, nor, rough] = useTexture([
-    '/textures/walnut_diff.jpg',
-    '/textures/walnut_nor.jpg',
-    '/textures/walnut_rough.jpg',
+    assetUrl('textures/walnut_diff.jpg'),
+    assetUrl('textures/walnut_nor.jpg'),
+    assetUrl('textures/walnut_rough.jpg'),
   ])
 
   const maps = useMemo(() => {
