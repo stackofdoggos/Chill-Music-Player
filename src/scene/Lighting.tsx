@@ -1,20 +1,25 @@
-import { useLayoutEffect, useRef } from 'react'
+import { Suspense, useLayoutEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Environment, Lightformer } from '@react-three/drei'
-import type { DirectionalLight, HemisphereLight, Object3D, PointLight, SpotLight } from 'three'
-import { PLAYER_POS } from './layout'
+import { Environment } from '@react-three/drei'
+import type { DirectionalLight, HemisphereLight, Object3D, PointLight, RectAreaLight, SpotLight } from 'three'
+import { RectAreaLightUniformsLib } from 'three-stdlib'
+import { assetUrl } from '../assetUrl'
+import { PLAYER_POS, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { useStore } from '../state/store'
 
-/** Static reflection rig — intensity scaled via scene.environmentIntensity per phase. */
+RectAreaLightUniformsLib.init()
+
+/** HDRI test — Poly Haven "Aft Lounge" 1K EXR for IBL / glossy reflections. */
+const HDRI_TEST = assetUrl('hdri/aft_lounge_1k.exr')
+/** HDRI is warm interior light — keep it weak so day/night lights + shafts stay in charge. */
+const HDRI_IBL_SCALE = 0.22
+
 function SceneEnvironment() {
   return (
-    <Environment resolution={256}>
-      <Lightformer intensity={3} position={[3, 1.6, 0]} rotation-y={-Math.PI / 2} scale={[3, 2, 1]} color="#fff3df" />
-      <Lightformer intensity={1.2} position={[0, 2.8, 0]} rotation-x={Math.PI / 2} scale={[4, 4, 1]} color="#ffffff" />
-      <Lightformer intensity={0.8} position={[0, 1.2, 3]} scale={[4, 2, 1]} color="#e8e4da" />
-      <Lightformer intensity={0.4} position={[-3, 1.2, 0]} rotation-y={Math.PI / 2} scale={[3, 2, 1]} color="#d8d4ca" />
-    </Environment>
+    <Suspense fallback={null}>
+      <Environment files={HDRI_TEST} resolution={256} background={false} />
+    </Suspense>
   )
 }
 
@@ -26,6 +31,7 @@ export function Lighting() {
   const fill = useRef<DirectionalLight>(null)
   const fillTarget = useRef<Object3D>(null)
   const lamp = useRef<PointLight>(null)
+  const windowLight = useRef<RectAreaLight>(null)
 
   useLayoutEffect(() => {
     const bound: Object3D[] = []
@@ -48,7 +54,7 @@ export function Lighting() {
 
   useFrame(() => {
     const a = sampleAtmosphere(useStore.getState().dayPhase)
-    scene.environmentIntensity = a.environmentIntensity
+    scene.environmentIntensity = a.environmentIntensity * HDRI_IBL_SCALE
 
     if (hemi.current) {
       hemi.current.color.copy(a.hemiSky)
@@ -72,6 +78,14 @@ export function Lighting() {
       lamp.current.color.copy(a.lampColor)
       lamp.current.intensity = a.lampIntensity
     }
+    if (windowLight.current) {
+      // soft area glow from the window pane — gives walls/floor the gentle
+      // wraparound falloff a real window produces (no shadows; the spotlight
+      // above still provides directional shadowing)
+      windowLight.current.color.copy(a.windowEmissive)
+      windowLight.current.intensity = a.windowEmissiveIntensity * 1.9 + a.hemiIntensity * 0.6
+      // default is * 1.5, * 0.6
+    }
   }, -1)
 
   return (
@@ -93,6 +107,14 @@ export function Lighting() {
         shadow-camera-far={16}
       />
       <directionalLight ref={fill} position={[-2, 1.8, 2.2]} />
+      {/* window pane as a real area light (LTC), matching the emissive plane in Room */}
+      <rectAreaLight
+        ref={windowLight}
+        position={[ROOM.w / 2 - 0.03, 1.45, -0.55]}
+        rotation-y={Math.PI / 2}
+        width={1.35}
+        height={1.05}
+      />
       <pointLight
         ref={lamp}
         position={[PLAYER_POS.x, PLAYER_POS.y + 0.55, PLAYER_POS.z]}

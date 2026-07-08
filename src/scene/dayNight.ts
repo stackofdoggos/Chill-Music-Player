@@ -271,7 +271,7 @@ const KEYFRAMES: RawKeyframe[] = [
     lampColor: '#ffb070',
     lampIntensity: 0.42,
     windowEmissive: '#a05840',
-    windowEmissiveIntensity: 0.45,
+    windowEmissiveIntensity: 0.95,
     ceilingEmissive: '#4a5060',
     ceilingEmissiveIntensity: 0.15,
     wallColor: '#6a6878',
@@ -402,6 +402,66 @@ export function sampleAtmosphere(phase: number, out = scratch): Atmosphere {
   const span = b.t - a.t
   const local = span > 0 ? (t - a.t) / span : 0
   return lerpRaw(a, b, local, out)
+}
+
+/** 0 = crisp (night), 1 = soft 1× haze (golden hour & sunset). */
+const HAZE_KEYFRAMES = [
+  { t: 0, v: 0 },
+  { t: 0.22, v: 0.12 },
+  { t: 0.48, v: 0.08 },
+  { t: 0.58, v: 0.45 },
+  { t: 0.65, v: 1 },
+  { t: 0.74, v: 1 },
+  { t: 0.86, v: 0.3 },
+  { t: 1, v: 0 },
+] as const
+
+/** Soft-render strength keyed to the day-night cycle (peaks at golden hour & sunset). */
+export function hazeBlend(phase: number): number {
+  const t = ((phase % 1) + 1) % 1
+  let i = 0
+  for (let k = 0; k < HAZE_KEYFRAMES.length - 1; k++) {
+    if (t >= HAZE_KEYFRAMES[k].t) i = k
+  }
+  const a = HAZE_KEYFRAMES[i]
+  const b = HAZE_KEYFRAMES[i + 1]
+  const span = b.t - a.t
+  const local = span > 0 ? (t - a.t) / span : 0
+  return THREE.MathUtils.lerp(a.v, b.v, local)
+}
+
+/** Pixel ratio for the canvas — auto blends 1× haze into device DPR by time of day. */
+export function effectiveDpr(phase: number, mode: 'auto' | 'standard' | 'high'): number {
+  const cap =
+    typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 2
+  if (mode === 'standard') return 1
+  if (mode === 'high') return cap
+  return THREE.MathUtils.lerp(cap, 1, hazeBlend(phase))
+}
+
+/**
+ * 0–1 strength of the window light shafts, derived from the window glow so
+ * beams appear with low warm sun (golden hour/sunset) and vanish at night.
+ */
+export function shaftStrength(a: Atmosphere): number {
+  return THREE.MathUtils.clamp((a.windowEmissiveIntensity - 0.3) / 1.5, 0, 1)
+}
+
+export type PhaseMark = { t: number; label: string }
+
+/** Keyframe positions for the day-night slider ticks (excludes duplicate night at t=1). */
+export function phaseMarks(): PhaseMark[] {
+  return KEYFRAMES.slice(0, -1).map(({ t, label }) => ({ t, label }))
+}
+
+/** CSS linear-gradient stops sampled from atmosphere keyframe backgrounds. */
+export function phaseTrackGradient(): string {
+  return KEYFRAMES.map((kf) => `${kf.background} ${(kf.t * 100).toFixed(2)}%`).join(', ')
+}
+
+/** Accent color for slider chrome — window glow at the current phase. */
+export function phaseAccentHex(phase: number): string {
+  return `#${sampleAtmosphere(phase).windowEmissive.getHexString()}`
 }
 
 /** Label for the nearest keyframe — used by the dev slider. */

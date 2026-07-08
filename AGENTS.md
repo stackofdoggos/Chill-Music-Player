@@ -16,22 +16,37 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | File | Owns |
 | --- | --- |
 | `src/state/store.ts` | zustand store: `view`, `selectedAlbumId` (shelf browse), `platterAlbumId`, `shelfPhase` + `recordPhase`, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
-| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; dev slider in `src/ui/DayNightSlider.tsx`. |
+| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; panel in `DayNightMenu` (`src/ui/DayNightSlider.tsx`). |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
-| `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, crackle layer, SFX playback, needle drop/seek logic. |
+| `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
+| `src/scene/Volumetrics.tsx` | Fake window sun shafts (additive quads, no raymarch). Intensity = `shaftStrength(atmosphere)` × mode from settings. |
+| `src/scene/Experience.tsx` | Canvas root, atmosphere post stack (`PostFxEffects`), shadow quality, DPR from settings + `dayPhase`. |
+| `src/state/postFx.ts` | Post FX defaults (`grain`, `temporalBlend`, `softness`, chromatic aberration). Read by `PostFxEffects`. Dev handle: `__postFx`. |
+| `scripts/verify-blender-plan.mjs` | Dumps/checks Blender scene coordinates against `layout.ts`; `npm run verify-blender-plan` validates `BLENDER_SCENE_PLAN.md`. |
+| `src/state/settings.ts` | Graphics/audio settings zustand store (persisted to localStorage): `softShadows` (VSM vs PCF), `ambientOcclusion` (N8AO), `lightShafts` (off/subtle/pronounced), `resolutionMode` (auto/standard/high — auto blends 1× DPR at golden hour/sunset with device DPR at night), `crackle` (groove surface noise on/off — engine reads via `useSettings.getState()`). Panel body in `SettingsMenu` (`src/ui/SettingsPanel.tsx`). Dev handle: `__settings`. |
+| `src/state/ui.ts` | Top-left menu chrome: `activeMenu` (`none \| settings \| light`), `toggleMenu()`, `setActiveMenu()`. Single shared blur overlay in `src/ui/TopMenuOverlay.tsx` — never mount a second backdrop when swapping cog ↔ light dot. |
+| `src/ui/TopMenuOverlay.tsx` | One `topmenu-overlay` blur for both menus; panel swap animates exit → enter without re-stacking filters. Escape handler lives here. |
 | `src/scene/RecordTransit.tsx` | The vinyl while traveling sleeve ↔ platter (CatmullRom path, keyed off `recordPhase` + `phaseStart`). |
 | `src/scene/Player/*` | Chassis, platter, tonearm (drag → groove radius → seek), knobs, acrylic lid. |
-| `src/scene/Shelf/*` | 606 shelf, album sleeves (canvas textures from cover art), vinyl disc mesh. |
+| `src/scene/Shelf/*` | Freestanding walnut bookcase (PBR maps in `public/textures/`, CC0 — see `public/textures/CREDITS.md`): 3+3 interactive albums face-forward on the top two shelves; albums with index >= `DISPLAY_SLOTS` (6) live inside two pull-out wicker bins on the floor (bulk storage). Decorative spine row on the middle shelf. Also album sleeves (canvas textures from cover art) and the vinyl disc mesh. |
 | `scripts/fetch-albums.mjs` | yt-dlp + iTunes pipeline that builds `public/albums/` + `manifest.json`. |
 
 State machine: `shelfPhase`: `none → pullingOut → out` (browsing covers on the shelf, independent of the platter).
 `recordPhase`: `none → toPlatter → onPlatter → returning → none` (vinyl on the player). `platterAlbumId` tracks which album is on the platter; `selectedAlbumId` is which sleeve is pulled out. While `onPlatter`, users can still pull out other sleeves to browse — `placeRecord` alone shows the return-first hint.
 Views: `overview | shelf | player | volume (knob close-up) | arm (top-down tonearm) | art (painting close-up)`.
 Shelf keyboard (when `view === 'shelf'`): `F` flips the pulled-out sleeve; `P` puts it back, pulls
-out the hovered spine, or swaps to a hovered spine while inspecting. `hoveredAlbumId` tracks the
-spine under the cursor for both `P` and the bottom-left control hints (`src/ui/controlHints.ts`).
+out the hovered sleeve, or swaps to a hovered sleeve while inspecting. `hoveredAlbumId` tracks the
+sleeve under the cursor for both `P` and the bottom-left control hints (`src/ui/controlHints.ts`).
+Sleeve pull-out/return is staged in `AlbumSleeve.tsx` (slide straight out past `SHELF_FRONT_Z`
+before gliding to `SLEEVE_OUT_POS`, and re-align before sliding back in) so covers never clip
+through the shelf boards above them.
+Wicker bins: `basketOut` in the store tracks which bin is slid forward (clicking a bin toggles
+it, no view change). Bin albums (index >= `DISPLAY_SLOTS`) ride their bin's slide, and
+`selectAlbum`/`putBackSleeve` auto-open the owning bin so the sleeve rises/descends outside
+the bookcase (see `BASKET` in `layout.ts`). `toggleBasket` refuses to close a bin whose album
+is still out.
 Unfocus order: `volume/arm → player`, `player/shelf → overview` (see `BACK` in store).
 Entering the precision views: click the volume knob → `volume` (drag or arrow keys adjust);
 click the tonearm bearing base/pivot column → `arm` (top-down); clicking the base again, the
@@ -70,7 +85,9 @@ Typical test flow (wait ~2s between steps for camera/phase animations):
 
 ```js
 // audio requires a user gesture: click the "Enter — sound on" button first (it has an a11y ref)
-p = __proj(0.71, 1.33, -1.835); __click(...p)          // click first spine (walks to shelf, then selects)
+p = __proj(0.703, 1.48, -2.13); __click(...p)          // click first cover, top-left (walks to shelf + pulls it out)
+// wicker bins: __click(...__proj(0.835, 0.17, -1.78)) toggles the left bin;
+// with it open, __click(...__proj(0.835, 0.38, -1.405)) pulls out the bin album
 p = __proj(...SLEEVE_OUT_POS); __click(...p)            // place record (see layout.ts for current value)
 p = __proj(-0.81, 0.7975, -1.58); __click(...p)         // power switch
 g = __proj(-0.7635, 0.9, -1.7605); d = __proj(-0.88, 0.9, -1.64); await __drag(...g, ...d) // drop needle
@@ -119,10 +136,24 @@ __engine.getProgress()                                   // should advance while
    try/catch and explicitly calls `releasePointerCapture` in `onUp`. If clicks mysteriously
    stop hitting objects during automation, suspect a stale capture — reload the page.
 11. **ContactShadows are top-down and expensive.** drei's `ContactShadows` re-renders the whole scene every frame from a fixed overhead camera — shadows never sweep with a directional sun, and `frames={Infinity}` causes 50–100ms rAF spikes. Use `directionalLight castShadow` only; `DirectionalLight.target` must be `scene.add(target)`.
-12. **Raycast diagnosis.** `window.__hits(clientX, clientY)` (dev only) lists the first 8
+12. **GLSL NaNs poison the bloom pass.** One NaN pixel (e.g. `pow(0.0, y)` on
+    Metal/ANGLE) spreads through Bloom's mipmap chain and blacks out most of the frame,
+    with **no console error**. Symptom: screen mostly black but UI fine, worse from some
+    camera angles. Clamp pow bases (`pow(max(x, 1e-4), y)`) in custom shaders.
+13. **drei `SoftShadows` (PCSS) is incompatible with three r184** — its shader injection
+    still calls `unpackRGBAToDepth` and fails to compile every material. Use
+    `VSMShadowMap` for soft area shadows instead (see `ShadowQuality` in `Experience.tsx`).
+14. **Raycast diagnosis.** `window.__hits(clientX, clientY)` (dev only) lists the first 8
    intersections at a screen point, nearest first — use it whenever a click "does nothing".
    Note it ignores `visible=false` differences from r3f's raycaster; named meshes
    (`arm-base`, `arm-pivot-column`) read clearest.
+15. **Escape must not highlight UI triggers.** Closing a panel/overlay with Escape returns
+   focus to the button that opened it (gear, light dot, etc.), which shows a focus ring or
+   looks “stuck” highlighted. On Escape dismiss, call `blurMenuTriggers()` in
+   `TopMenuOverlay.tsx`: `requestAnimationFrame` → `.blur()` on `.settings-gear`,
+   `.daynight-dot`, and `document.activeElement`. **Defer one frame** so blur runs after the
+   browser’s post-unmount focus restore. Apply the same pattern to any new Escape-dismissed
+   overlay — never leave the opener focused/highlighted.
 
 ## Verification checklist
 

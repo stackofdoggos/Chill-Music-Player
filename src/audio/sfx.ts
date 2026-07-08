@@ -28,7 +28,7 @@ const SAMPLES: Record<Exclude<SfxName, 'needleLift' | 'knobTick' | 'recordPlace'
   sleeveOut: { file: 'sleeve-out.mp3', peak: 0.375 },
   sleeveIn: { file: 'sleeve-in.mp3', peak: 0.75 },
   vinylOut: { file: 'vinyl-out.mp3', peak: 0.75 },
-  crackleLoop: { file: 'crackle-loop.mp3', peak: 0.2 },
+  crackleLoop: { file: 'crackle-loop.mp3', peak: 0.35 },
 }
 
 async function decodeSample(ctx: AudioContext, url: string): Promise<AudioBuffer> {

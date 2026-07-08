@@ -1,6 +1,7 @@
 import { buildSfx, type SfxName } from './sfx'
 import { trackUrl, type Album } from '../albums'
 import { useStore } from '../state/store'
+import { useSettings } from '../state/settings'
 
 const SPIN_UP_RATE = 0.9 // platter acceleration, rev-factor per second
 const SPIN_DOWN_RATE = 0.55
@@ -8,10 +9,10 @@ const MIN_AUDIBLE_RATE = 0.3 // below this we pause the media element
 
 /**
  * Singleton audio engine. Owns the AudioContext, the music graph
- * (media element -> vinyl EQ -> gain -> master) plus crackle loop and
- * one-shot SFX. Also models the platter: `rate` is the current platter speed
- * as a fraction of nominal 33rpm, and the media playbackRate follows it so
- * spin-up/down produces a real pitch bend (preservesPitch = false).
+ * (media element -> vinyl EQ -> gain -> master), a quiet groove-crackle loop,
+ * and one-shot SFX. Also models the platter: `rate` is the current platter
+ * speed as a fraction of nominal 33rpm, and the media playbackRate follows it
+ * so spin-up/down produces a real pitch bend (preservesPitch = false).
  */
 class AudioEngine {
   private ctx: AudioContext | null = null
@@ -90,13 +91,19 @@ class AudioEngine {
 
     this.sfx = await buildSfx(ctx)
 
+    const crackleFilter = ctx.createBiquadFilter()
+    crackleFilter.type = 'highpass'
+    crackleFilter.frequency.value = 320
+    crackleFilter.Q.value = 0.5
+
     this.crackleGain = ctx.createGain()
     this.crackleGain.gain.value = 0
     this.crackleGain.connect(this.master)
     this.crackleSrc = ctx.createBufferSource()
     this.crackleSrc.buffer = this.sfx.crackleLoop
     this.crackleSrc.loop = true
-    this.crackleSrc.connect(this.crackleGain)
+    this.crackleSrc.connect(crackleFilter)
+    crackleFilter.connect(this.crackleGain)
     this.crackleSrc.start()
 
     const el = new Audio()
@@ -174,7 +181,7 @@ class AudioEngine {
     this.seekReady = false
     this.restProgress = p
     this.playSfx('needleDrop', 0.8)
-    this.rampGain(this.crackleGain, this.crackleLevel(), 0.15)
+    this.rampGain(this.crackleGain, this.crackleLevel(), 0.2)
     clearTimeout(this.dropTimer)
     this.startMusicAt(p)
   }
@@ -187,7 +194,7 @@ class AudioEngine {
     clearTimeout(this.dropTimer)
     this.clearMetaHandler()
     if (!silent) this.playSfx('needleLift', 0.6)
-    if (this.ctx) this.rampGain(this.crackleGain, 0, 0.2)
+    if (this.ctx) this.rampGain(this.crackleGain, 0, 0.25)
     this.el?.pause()
     useStore.getState().setNowPlayingTrack(-1)
   }
@@ -273,7 +280,7 @@ class AudioEngine {
   private onTrackEnded() {
     if (!this.album || !this.needleDown) return
     if (this.trackIndex < this.album.tracks.length - 1) {
-      // brief groove-gap of pure crackle between tracks
+      // brief pause between tracks
       setTimeout(() => {
         if (this.needleDown) this.playTrack(this.trackIndex + 1, 0)
       }, 1400)
@@ -292,7 +299,7 @@ class AudioEngine {
     this.needleDown = false
     this.seekReady = false
     this.el?.pause()
-    if (this.ctx) this.rampGain(this.crackleGain, 0, 0.1)
+    if (this.ctx) this.rampGain(this.crackleGain, 0, 0.15)
   }
 
   setPower(on: boolean) {
@@ -338,15 +345,16 @@ class AudioEngine {
       } else if (!this.el.paused) {
         this.el.pause()
       }
-      // crackle follows the groove speed
       this.crackleSrc.playbackRate.value = Math.max(0.05, this.rate)
-      const target = this.rate > 0.05 ? this.crackleLevel() * this.rate : 0
+      const spin = this.powered ? Math.max(0.4, this.rate) : 0
+      const target = spin > 0.05 ? this.crackleLevel() * spin : 0
       this.crackleGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.1)
     }
   }
 
   private crackleLevel() {
-    return 0.25
+    if (!useSettings.getState().crackle) return 0
+    return 0.10
   }
 
   private rampGain(node: GainNode, value: number, seconds: number) {
