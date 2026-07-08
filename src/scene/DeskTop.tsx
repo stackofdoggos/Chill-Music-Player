@@ -17,7 +17,7 @@ export function DeskTop() {
     diff.colorSpace = THREE.SRGBColorSpace
     for (const t of [diff, nor, rough]) {
       t.wrapS = t.wrapT = THREE.RepeatWrapping
-      t.anisotropy = 8
+      t.anisotropy = 4
     }
     // ~1.2 repeats per meter — matches desk footprint (1.7 × 0.62 m)
     const rx = DESK.w * 1.2

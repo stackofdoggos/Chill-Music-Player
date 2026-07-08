@@ -18,7 +18,7 @@ const HDRI_IBL_SCALE = 0.22
 function SceneEnvironment() {
   return (
     <Suspense fallback={null}>
-      <Environment files={HDRI_TEST} resolution={512} background={false} />
+      <Environment files={HDRI_TEST} resolution={256} background={false} />
     </Suspense>
   )
 }

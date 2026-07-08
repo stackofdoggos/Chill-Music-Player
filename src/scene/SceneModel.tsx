@@ -12,15 +12,15 @@ import { useGLTF } from '@react-three/drei'
 import type { MeshStandardMaterial } from 'three'
 import * as THREE from 'three'
 import { engine } from '../audio/engine'
-import { assetUrl } from '../assetUrl'
 import { dragActiveOrRecent, requestUnfocus, useStore } from '../state/store'
 import { ANCHOR_NAMES } from './anchors'
 import { isShelfFocusPoint } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { DeskTop } from './DeskTop'
 import { woodTexture } from './textures'
+import { GLB_PATH, GLB_USE_DRACO } from './preloadScene'
 
-const GLB_PATH = assetUrl('models/room.glb')
+const GLB_PATH_LOCAL = GLB_PATH
 
 type SceneModelContextValue = {
   nodes: Record<string, THREE.Object3D>
@@ -43,6 +43,34 @@ const HIDDEN_MESHES = new Set([
   'wall_art_painting',
   'desk_top',
 ])
+
+/** Prop mesh name prefixes after GLB export (parent `prop_*` empties may be applied away). */
+const PROP_MESH_RE =
+  /^(Leaves_Leaves|Plant_Pot_Pot|Retopo_New_Tree|alarm_clock|houd_hand|minute_hand|second_hand|ceramic_vase|Mesh_0_Material)/
+
+function tagDecorProps(root: THREE.Object3D) {
+  root.traverse((obj) => {
+    let p: THREE.Object3D | null = obj
+    while (p) {
+      if (p.name.startsWith('prop_')) {
+        obj.userData.decorProp = true
+        return
+      }
+      p = p.parent
+    }
+  })
+}
+
+function isDecorProp(obj: THREE.Object3D): boolean {
+  if (obj.userData.decorProp) return true
+  if (PROP_MESH_RE.test(obj.name)) return true
+  let o: THREE.Object3D | null = obj
+  while (o) {
+    if (o.name.startsWith('prop_')) return true
+    o = o.parent
+  }
+  return false
+}
 
 /** GLB basket shells replaced by code-driven BasketShell (correct weave UVs) */
 const BASKET_SHELL_RE =
@@ -74,11 +102,14 @@ function setupMesh(obj: THREE.Object3D) {
 }
 
 export function SceneModelProvider({ children }: { children: ReactNode }) {
-  const gltf = useGLTF(GLB_PATH)
+  const gltf = useGLTF(GLB_PATH_LOCAL, GLB_USE_DRACO)
   const { scene, nodes } = useMemo(() => {
-    const clone = gltf.scene.clone(true)
-    clone.traverse(setupMesh)
-    return { scene: clone, nodes: buildNodeMap(clone) }
+    if (!gltf.scene.userData.__roomSetup) {
+      gltf.scene.traverse(setupMesh)
+      tagDecorProps(gltf.scene)
+      gltf.scene.userData.__roomSetup = true
+    }
+    return { scene: gltf.scene, nodes: buildNodeMap(gltf.scene) }
   }, [gltf.scene])
 
   const backWallMat = useRef<MeshStandardMaterial | null>(null)
@@ -270,7 +301,11 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       }
       return
     }
-    if (name.startsWith('spine_') || name === 'plant_pot' || name.startsWith('plant_leaf')) {
+    if (isDecorProp(e.object)) {
+      e.stopPropagation()
+      return
+    }
+    if (name.startsWith('spine_')) {
       e.stopPropagation()
       if (dragActiveOrRecent()) return
       const action = useStore.getState().clickShelfBackdrop()
@@ -299,5 +334,3 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
     </SceneModelContext.Provider>
   )
 }
-
-useGLTF.preload(GLB_PATH)
