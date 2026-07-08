@@ -17,6 +17,7 @@ import { dragActiveOrRecent, requestUnfocus, useStore } from '../state/store'
 import { ANCHOR_NAMES } from './anchors'
 import { isShelfFocusPoint } from './layout'
 import { sampleAtmosphere } from './dayNight'
+import { DeskTop } from './DeskTop'
 import { woodTexture } from './textures'
 
 const GLB_PATH = assetUrl('models/room.glb')
@@ -40,6 +41,7 @@ const HIDDEN_MESHES = new Set([
   'wall_art_frame',
   'wall_art_mat',
   'wall_art_painting',
+  'desk_top',
 ])
 
 /** GLB basket shells replaced by code-driven BasketShell (correct weave UVs) */
@@ -108,7 +110,84 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       mat.needsUpdate = true
     }
     applyWood('floor', 5, 5, true, 0.7)
-    applyWood('desk_top', 2, 1, false, 0.55)
+
+    const applyLacquer = (
+      name: string,
+      {
+        roughness,
+        metalness,
+        clearcoat,
+        clearcoatRoughness,
+        envMapIntensity,
+      }: {
+        roughness: number
+        metalness: number
+        clearcoat: number
+        clearcoatRoughness: number
+        envMapIntensity: number
+      },
+    ) => {
+      const mesh = nodes[name] as THREE.Mesh | undefined
+      const raw = mesh?.material
+      const mat = (Array.isArray(raw) ? raw[0] : raw) as THREE.MeshStandardMaterial | undefined
+      if (!mat) return
+      const lacquer = new THREE.MeshPhysicalMaterial({
+        color: mat.color,
+        roughness,
+        metalness,
+        clearcoat,
+        clearcoatRoughness,
+        envMapIntensity,
+      })
+      mesh!.material = lacquer
+    }
+    applyLacquer('player_chassis', {
+      roughness: 0.16,
+      metalness: 0.06,
+      clearcoat: 0.78,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 1.25,
+    })
+    applyLacquer('player_deck', {
+      roughness: 0.22,
+      metalness: 0.18,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 1.05,
+    })
+
+    // Acrylic lid — boost env reflections; GLB exports KHR_materials_transmission on lid_acrylic
+    nodes.lid_hinge?.traverse((obj) => {
+      if (obj.type !== 'Mesh') return
+      const mesh = obj as THREE.Mesh
+      const raw = mesh.material
+      const mats = Array.isArray(raw) ? raw : raw ? [raw] : []
+      for (let i = 0; i < mats.length; i++) {
+        const m = mats[i]
+        if (m instanceof THREE.MeshPhysicalMaterial) {
+          m.envMapIntensity = 1.65
+          m.roughness = 0.013
+          m.transmission = Math.min(1, (m.transmission || 0.92) + 0.053)
+          m.needsUpdate = true
+        } else if (m instanceof THREE.MeshStandardMaterial) {
+          // Fallback if an old GLB is still cached without transmission
+          const phys = new THREE.MeshPhysicalMaterial({
+            color: m.color,
+            roughness: 0.02,
+            metalness: 0,
+            transmission: 0.973,
+            thickness: 0.012,
+            ior: 1.45,
+            envMapIntensity: 1.4,
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          })
+          if (Array.isArray(mesh.material)) mesh.material[i] = phys
+          else mesh.material = phys
+        }
+      }
+    })
 
     if (import.meta.env.DEV) {
       ;(window as Window & { __anchors?: () => Record<string, number[]> }).__anchors = () => {
@@ -215,6 +294,7 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
   return (
     <SceneModelContext.Provider value={value}>
       <primitive object={scene} onClick={onPointer} />
+      <DeskTop />
       {children}
     </SceneModelContext.Provider>
   )

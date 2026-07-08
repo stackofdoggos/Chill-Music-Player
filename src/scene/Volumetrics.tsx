@@ -76,7 +76,7 @@ export function Volumetrics() {
     if (!group.current) return
     const a = sampleAtmosphere(useStore.getState().dayPhase)
     const raw = shaftStrength(a)
-    const gain = mode === 'pronounced' ? 0.9 : 0.45
+    const gain = mode === 'pronounced' ? 1.15 : 0.72
     const intensity = raw * gain
     shaftMat.uniforms.uIntensity.value = intensity
     shaftMat.uniforms.uTime.value = state.clock.elapsedTime
@@ -93,7 +93,7 @@ export function Volumetrics() {
 
   const width = mode === 'pronounced' ? 1.5 : 1.15
   return (
-    <group position={WINDOW_POS.toArray()} ref={group}>
+    <group position={WINDOW_POS.toArray()} ref={group} renderOrder={2}>
       {/* crossed quads, three slices across the window width */}
       {[-0.38, 0, 0.38].map((off) => (
         <group key={off} position={[off * 0.4, 0, off]}>

@@ -5,13 +5,17 @@ const fragmentShader = /* glsl */ `
 uniform float radius;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  vec2 texel = radius / resolution;
+  // Window / sun shafts are screen-right — stronger blur there, gentler on the left.
+  float side = smoothstep(0.08, 0.82, uv.x);
+  float weight = mix(0.38, 1.0, side);
+  vec2 texel = (radius * weight) / resolution;
   vec4 sum = inputColor;
   sum += texture2D(inputBuffer, uv + vec2(texel.x, 0.0));
   sum += texture2D(inputBuffer, uv - vec2(texel.x, 0.0));
   sum += texture2D(inputBuffer, uv + vec2(0.0, texel.y));
   sum += texture2D(inputBuffer, uv - vec2(0.0, texel.y));
-  outputColor = sum * 0.2;
+  vec4 blurred = sum * 0.2;
+  outputColor = mix(inputColor, blurred, weight);
 }
 `
 
