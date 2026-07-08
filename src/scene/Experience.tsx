@@ -1,19 +1,22 @@
 import { Suspense, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, Bloom, N8AO, Vignette, ChromaticAberration } from '@react-three/postprocessing'
+import { EffectComposer } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { requestUnfocus, useStore } from '../state/store'
 import { useSettings } from '../state/settings'
 import { engine } from '../audio/engine'
 import { STATIONS } from './layout'
 import { effectiveDpr, sampleAtmosphere } from './dayNight'
+import { PostFxEffects } from './PostFxEffects'
 import { Lighting } from './Lighting'
+import { SceneModelProvider } from './SceneModel'
 import { Room } from './Room'
 import { CameraRig } from './CameraRig'
 import { Player } from './Player/Player'
 import { Shelf } from './Shelf/Shelf'
 import { RecordTransit } from './RecordTransit'
 import { Volumetrics } from './Volumetrics'
+import { SceneBootReporter } from './SceneBootReporter'
 
 function EngineUpdater() {
   useFrame((_, dt) => engine.update(Math.min(dt, 0.1)))
@@ -60,28 +63,11 @@ function SceneBackground() {
   return null
 }
 
-function AtmosphereEffects({ ao }: { ao: boolean }) {
-  const dayPhase = useStore((s) => s.dayPhase)
-  const a = sampleAtmosphere(dayPhase)
-  return (
-    <>
-      {ao && <N8AO aoRadius={0.28} intensity={2.6} distanceFalloff={0.6} halfRes />}
-      <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
-      <ChromaticAberration
-        offset={[0.00035, 0.0002]}
-        radialModulation
-        modulationOffset={0.18}
-      />
-      <Vignette eskil={false} offset={a.vignetteOffset} darkness={a.vignetteDarkness} />
-    </>
-  )
-}
-
 function AtmospherePost() {
   const ao = useSettings((s) => s.ambientOcclusion)
   return (
-    <EffectComposer multisampling={4}>
-      <AtmosphereEffects ao={ao} />
+    <EffectComposer multisampling={0}>
+      <PostFxEffects ao={ao} />
     </EffectComposer>
   )
 }
@@ -100,13 +86,16 @@ export function Experience() {
       }}
       onPointerMissed={() => requestUnfocus()}
     >
+      <SceneBootReporter />
       <ShadowQuality />
       <SceneBackground />
       <Lighting />
-      <Room />
-      <Player />
       <Suspense fallback={null}>
-        <Shelf />
+        <SceneModelProvider>
+          <Room />
+          <Player />
+          <Shelf />
+        </SceneModelProvider>
       </Suspense>
       <RecordTransit />
       <Volumetrics />

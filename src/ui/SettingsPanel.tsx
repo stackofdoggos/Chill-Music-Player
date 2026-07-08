@@ -112,7 +112,7 @@ export function SettingsMenu({
       <div className="settings__row settings__row--stack">
         <div>
           <div className="settings__label">Light shafts</div>
-          <div className="settings__hint">Sunbeams and dust by the window</div>
+          <div className="settings__hint">Sunbeams by the window</div>
         </div>
         <Segmented<ShaftMode>
           value={s.lightShafts}

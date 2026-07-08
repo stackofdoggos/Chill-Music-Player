@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useStore, platterAlbum, dragActiveOrRecent, PHASE_DURATION } from '../state/store'
 import { engine } from '../audio/engine'
 import { Vinyl } from './Shelf/Vinyl'
+import { useSceneModel } from './SceneModel'
 import { SLEEVE_OUT_POS, VINYL_REST, easeInOutCubic } from './layout'
 
 const Q_VERTICAL = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0))
@@ -19,7 +20,9 @@ function smoothstep(a: number, b: number, x: number) {
 
 /** the active album's record while it travels between sleeve and platter */
 export function RecordTransit() {
+  const { nodes } = useSceneModel()
   const group = useRef<THREE.Group>(null)
+  const restPos = useRef(new THREE.Vector3())
   const phase = useStore((s) => s.recordPhase)
   const phaseStart = useStore((s) => s.phaseStart)
   const album = useStore(platterAlbum)
@@ -73,7 +76,14 @@ export function RecordTransit() {
         engine.playSfx('recordPlace', 0.85)
       }
     } else if (phase === 'onPlatter') {
-      g.position.copy(VINYL_REST)
+      const anchor = nodes.vinyl_rest
+      if (anchor) {
+        anchor.updateWorldMatrix(true, false)
+        anchor.getWorldPosition(restPos.current)
+        g.position.copy(restPos.current)
+      } else {
+        g.position.copy(VINYL_REST)
+      }
       tmpE.set(0, engine.platterAngle, 0)
       g.quaternion.setFromEuler(tmpE)
     }

@@ -21,7 +21,10 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |
 | `src/scene/CameraRig.tsx` | Damped fly-to between `STATIONS[view]` + mouse parallax. |
-| `src/scene/Volumetrics.tsx` | Fake window sun shafts + dust motes (additive quads/points, no raymarch). Intensity = `shaftStrength(atmosphere)` × mode from settings. |
+| `src/scene/Volumetrics.tsx` | Fake window sun shafts (additive quads, no raymarch). Intensity = `shaftStrength(atmosphere)` × mode from settings. |
+| `src/scene/Experience.tsx` | Canvas root, atmosphere post stack (`PostFxEffects`), shadow quality, DPR from settings + `dayPhase`. |
+| `src/state/postFx.ts` | Post FX defaults (`grain`, `temporalBlend`, `softness`, chromatic aberration). Read by `PostFxEffects`. Dev handle: `__postFx`. |
+| `scripts/verify-blender-plan.mjs` | Dumps/checks Blender scene coordinates against `layout.ts`; `npm run verify-blender-plan` validates `BLENDER_SCENE_PLAN.md`. |
 | `src/state/settings.ts` | Graphics/audio settings zustand store (persisted to localStorage): `softShadows` (VSM vs PCF), `ambientOcclusion` (N8AO), `lightShafts` (off/subtle/pronounced), `resolutionMode` (auto/standard/high — auto blends 1× DPR at golden hour/sunset with device DPR at night), `crackle` (groove surface noise on/off — engine reads via `useSettings.getState()`). Panel body in `SettingsMenu` (`src/ui/SettingsPanel.tsx`). Dev handle: `__settings`. |
 | `src/state/ui.ts` | Top-left menu chrome: `activeMenu` (`none \| settings \| light`), `toggleMenu()`, `setActiveMenu()`. Single shared blur overlay in `src/ui/TopMenuOverlay.tsx` — never mount a second backdrop when swapping cog ↔ light dot. |
 | `src/ui/TopMenuOverlay.tsx` | One `topmenu-overlay` blur for both menus; panel swap animates exit → enter without re-stacking filters. Escape handler lives here. |

@@ -10,6 +10,8 @@ import { useUi } from './state/ui'
 import { SettingsGear } from './ui/SettingsPanel'
 import { TopMenuOverlay } from './ui/TopMenuOverlay'
 import { engine } from './audio/engine'
+import { preloadSceneAssets } from './scene/preloadScene'
+import { useBoot } from './state/boot'
 
 const BOOT_STATUS = [
   'Fetching catalog…',
@@ -17,6 +19,8 @@ const BOOT_STATUS = [
   'Indexing tracks…',
   'Preparing audio engine…',
   'Generating scene…',
+  'Loading room model…',
+  'Placing props…',
   'Calibrating tonearm…',
   'Warming the room…',
 ] as const
@@ -30,15 +34,21 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const [entered, setEntered] = useState(false)
   const [showLoading, setShowLoading] = useState(true)
-  const assetsReady = useRef(false)
   const bootStart = useRef(performance.now())
 
   useEffect(() => {
+    preloadSceneAssets()
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
-    loadAlbums(() => {}).then((albums) => {
+    loadAlbums((done, total) => {
+      if (cancelled) return
+      useBoot.getState().setAlbums(total ? done / total : 0)
+    }).then((albums) => {
       if (cancelled) return
       useStore.getState().setAlbums(albums)
-      assetsReady.current = true
+      useBoot.getState().setAlbums(1)
     })
     return () => {
       cancelled = true
@@ -52,14 +62,18 @@ export default function App() {
       const step = Math.min(BOOT_STATUS.length - 1, Math.floor(elapsed / STATUS_MS))
       setLoadStatus(BOOT_STATUS[step])
 
+      const { albumProgress, sceneProgress, albumsReady, sceneReady } = useBoot.getState()
+      const assetTarget = Math.min(1, albumProgress * 0.15 + sceneProgress * 0.75)
       const timeTarget = Math.min(1, elapsed / MIN_BOOT_MS)
-      const cap = assetsReady.current ? 1 : Math.min(0.8, timeTarget)
+      const target = Math.min(1, assetTarget + timeTarget * 0.1)
+      const cap = albumsReady && sceneReady ? 1 : Math.min(0.92, target)
+
       setLoadProgress((p) => {
-        const eased = p + (Math.min(timeTarget, cap) - p) * 0.06
-        return Math.min(cap, eased + 0.0015)
+        const eased = p + (Math.min(target, cap) - p) * 0.08
+        return Math.min(cap, eased + 0.001)
       })
 
-      if (assetsReady.current && elapsed >= MIN_BOOT_MS) {
+      if (albumsReady && sceneReady && elapsed >= MIN_BOOT_MS) {
         setLoadProgress(1)
         setReady(true)
         return
@@ -99,11 +113,9 @@ export default function App() {
   return (
     <>
       <VinylFavicon />
-      {ready && (
-        <div className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}`}>
-          <Experience />
-        </div>
-      )}
+      <div className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}`}>
+        <Experience />
+      </div>
       {showLoading && (
         <LoadingScreen
           progress={loadProgress}
