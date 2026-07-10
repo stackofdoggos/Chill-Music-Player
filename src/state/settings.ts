@@ -15,12 +15,15 @@ export interface GraphicsSettings {
   resolutionMode: ResolutionMode
   /** quiet groove crackle while the needle is down */
   crackle: boolean
+  /** HDRI image-based reflections on glossy surfaces */
+  reflections: boolean
 
   setSoftShadows: (v: boolean) => void
   setAmbientOcclusion: (v: boolean) => void
   setLightShafts: (v: ShaftMode) => void
   setResolutionMode: (v: ResolutionMode) => void
   setCrackle: (v: boolean) => void
+  setReflections: (v: boolean) => void
 }
 
 type PersistedV0 = {
@@ -37,21 +40,23 @@ export const useSettings = create<GraphicsSettings>()(
       softShadows: true,
       ambientOcclusion: true,
       lightShafts: 'pronounced',
-      resolutionMode: 'high',
+      resolutionMode: 'auto',
       crackle: true,
+      reflections: true,
 
       setSoftShadows: (softShadows) => set({ softShadows }),
       setAmbientOcclusion: (ambientOcclusion) => set({ ambientOcclusion }),
       setLightShafts: (lightShafts) => set({ lightShafts }),
       setResolutionMode: (resolutionMode) => set({ resolutionMode }),
       setCrackle: (crackle) => set({ crackle }),
+      setReflections: (reflections) => set({ reflections }),
     }),
     {
       name: 'record-room-graphics',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        const s = persisted as PersistedV0 & { crackle?: boolean }
-        let state: PersistedV0 & { crackle?: boolean } = s
+        const s = persisted as PersistedV0 & { crackle?: boolean; reflections?: boolean }
+        let state: PersistedV0 & { crackle?: boolean; reflections?: boolean } = s
         if (!s.resolutionMode) {
           state = {
             ...s,
@@ -59,6 +64,7 @@ export const useSettings = create<GraphicsSettings>()(
           }
         }
         if (version < 2) state = { ...state, crackle: state.crackle ?? true }
+        if (version < 3) state = { ...state, reflections: state.reflections ?? true }
         return state as GraphicsSettings
       },
       partialize: (s) => ({
@@ -67,6 +73,7 @@ export const useSettings = create<GraphicsSettings>()(
         lightShafts: s.lightShafts,
         resolutionMode: s.resolutionMode,
         crackle: s.crackle,
+        reflections: s.reflections,
       }),
     },
   ),

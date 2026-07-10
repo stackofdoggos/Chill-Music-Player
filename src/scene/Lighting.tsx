@@ -1,9 +1,10 @@
-import { Suspense, useLayoutEffect, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import type { DirectionalLight, HemisphereLight, Object3D, PointLight, RectAreaLight, SpotLight } from 'three'
 import { RectAreaLightUniformsLib } from 'three-stdlib'
 import { assetUrl } from '../assetUrl'
+import { useSettings } from '../state/settings'
 import { PLAYER_POS, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { useStore } from '../state/store'
@@ -25,6 +26,7 @@ function SceneEnvironment() {
 
 export function Lighting() {
   const scene = useThree((s) => s.scene)
+  const reflections = useSettings((s) => s.reflections)
   const hemi = useRef<HemisphereLight>(null)
   const sun = useRef<SpotLight>(null)
   const sunTarget = useRef<Object3D>(null)
@@ -52,9 +54,15 @@ export function Lighting() {
     return () => bound.forEach((o) => scene.remove(o))
   }, [scene])
 
+  useEffect(() => {
+    if (reflections) return
+    scene.environment = null
+    scene.environmentIntensity = 0
+  }, [reflections, scene])
+
   useFrame(() => {
     const a = sampleAtmosphere(useStore.getState().dayPhase)
-    scene.environmentIntensity = a.environmentIntensity * HDRI_IBL_SCALE
+    if (reflections) scene.environmentIntensity = a.environmentIntensity * HDRI_IBL_SCALE
 
     if (hemi.current) {
       hemi.current.color.copy(a.hemiSky)
@@ -121,7 +129,7 @@ export function Lighting() {
         distance={3.2}
         decay={2}
       />
-      <SceneEnvironment />
+      {reflections && <SceneEnvironment />}
     </>
   )
 }

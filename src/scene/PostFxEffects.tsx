@@ -17,6 +17,7 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
 
   const softnessEffect = useMemo(() => new SoftnessEffect(), [])
   const temporalEffect = useMemo(() => new TemporalBlendEffect(), [])
+  const useTemporal = POST_FX_DEFAULTS.temporalBlend > 0.01
   const grainEffect = useMemo(
     () => new NoiseEffect({ blendFunction: BlendFunction.SCREEN, premultiply: true }),
     [],
@@ -36,7 +37,7 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
     const autoBlurScale = resolutionMode === 'auto' ? 1 / 3 : 1
     softnessEffect.radius = s.softnessRadius
     softnessEffect.blendMode.setOpacity(s.softness * autoBlurScale)
-    temporalEffect.blend = s.temporalBlend
+    if (useTemporal) temporalEffect.blend = s.temporalBlend
     grainEffect.blendMode.setOpacity(s.grain)
     chromaticEffect.offset.set(s.chromaticX, s.chromaticY)
     if (chromaticEffect.radialModulation !== s.chromaticRadial) {
@@ -51,7 +52,7 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
       <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
       <primitive object={softnessEffect} />
       <primitive object={chromaticEffect} />
-      <primitive object={temporalEffect} />
+      {useTemporal && <primitive object={temporalEffect} />}
       <primitive object={grainEffect} />
       <Vignette eskil={false} offset={a.vignetteOffset} darkness={a.vignetteDarkness} />
     </>

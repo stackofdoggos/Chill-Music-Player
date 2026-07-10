@@ -143,6 +143,14 @@ export function SettingsMenu({
 
       <div className="settings__row">
         <div>
+          <div className="settings__label">Reflections</div>
+          <div className="settings__hint">HDRI gloss on the player, lid, and wood</div>
+        </div>
+        <Toggle checked={s.reflections} onChange={s.setReflections} />
+      </div>
+
+      <div className="settings__row">
+        <div>
           <div className="settings__label">Surface crackle</div>
           <div className="settings__hint">Quiet groove noise while the needle is down</div>
         </div>

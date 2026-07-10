@@ -114,7 +114,7 @@ export default function App() {
     <>
       <VinylFavicon />
       <div className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}`}>
-        <Experience />
+        <Experience active={entered} />
       </div>
       {showLoading && (
         <LoadingScreen

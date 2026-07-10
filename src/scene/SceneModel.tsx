@@ -187,7 +187,7 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       envMapIntensity: 1.05,
     })
 
-    // Acrylic lid — boost env reflections; GLB exports KHR_materials_transmission on lid_acrylic
+    // Acrylic lid — thin clear glass over the platter
     nodes.lid_hinge?.traverse((obj) => {
       if (obj.type !== 'Mesh') return
       const mesh = obj as THREE.Mesh
@@ -196,21 +196,28 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       for (let i = 0; i < mats.length; i++) {
         const m = mats[i]
         if (m instanceof THREE.MeshPhysicalMaterial) {
-          m.envMapIntensity = 1.65
-          m.roughness = 0.013
-          m.transmission = Math.min(1, (m.transmission || 0.92) + 0.053)
+          m.envMapIntensity = 1.5
+          m.roughness = 0.004
+          m.metalness = 0
+          m.transmission = 1
+          m.thickness = 0.006
+          m.ior = 1.45
+          m.opacity = 1
+          m.transparent = true
+          m.depthWrite = false
+          m.side = THREE.DoubleSide
           m.needsUpdate = true
         } else if (m instanceof THREE.MeshStandardMaterial) {
-          // Fallback if an old GLB is still cached without transmission
           const phys = new THREE.MeshPhysicalMaterial({
             color: m.color,
-            roughness: 0.02,
+            roughness: 0.004,
             metalness: 0,
-            transmission: 0.973,
-            thickness: 0.012,
+            transmission: 1,
+            thickness: 0.006,
             ior: 1.45,
             envMapIntensity: 1.4,
             transparent: true,
+            opacity: 1,
             depthWrite: false,
             side: THREE.DoubleSide,
           })

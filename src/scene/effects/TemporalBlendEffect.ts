@@ -62,6 +62,7 @@ export class TemporalBlendEffect extends Effect {
   }
 
   update(renderer: WebGLRenderer, inputBuffer: WebGLRenderTargetType, deltaTime: number) {
+    if (this.blend <= 0.001) return
     this.uniforms.get('historyBuffer')!.value = this.historyRead.texture
     this.copyPass.render(renderer, inputBuffer, this.historyWrite, deltaTime, false)
     const swap = this.historyRead

@@ -72,12 +72,13 @@ function AtmospherePost() {
   )
 }
 
-export function Experience() {
+export function Experience({ active }: { active: boolean }) {
   const dayPhase = useStore((s) => s.dayPhase)
   const resolutionMode = useSettings((s) => s.resolutionMode)
   const dpr = effectiveDpr(dayPhase, resolutionMode)
   return (
     <Canvas
+      frameloop={active ? 'always' : 'never'}
       dpr={dpr}
       camera={{ fov: 40, position: STATIONS.overview.pos.toArray(), near: 0.05, far: 30 }}
       onCreated={({ gl }) => {
