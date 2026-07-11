@@ -12,6 +12,7 @@ import { TopMenuOverlay } from './ui/TopMenuOverlay'
 import { engine } from './audio/engine'
 import { preloadSceneAssets } from './scene/preloadScene'
 import { useBoot } from './state/boot'
+import { runGpuBenchmarkOnce } from './gpu/runGpuBenchmarkOnce'
 
 const BOOT_STATUS = [
   'Fetching catalog…',
@@ -38,6 +39,7 @@ export default function App() {
 
   useEffect(() => {
     preloadSceneAssets()
+    void runGpuBenchmarkOnce()
   }, [])
 
   useEffect(() => {

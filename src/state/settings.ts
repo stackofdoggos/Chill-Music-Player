@@ -17,6 +17,8 @@ export interface GraphicsSettings {
   crackle: boolean
   /** HDRI image-based reflections on glossy surfaces */
   reflections: boolean
+  /** first-visit GPU probe has run (only sets resolutionMode once) */
+  gpuBenchmarked: boolean
 
   setSoftShadows: (v: boolean) => void
   setAmbientOcclusion: (v: boolean) => void
@@ -24,6 +26,7 @@ export interface GraphicsSettings {
   setResolutionMode: (v: ResolutionMode) => void
   setCrackle: (v: boolean) => void
   setReflections: (v: boolean) => void
+  applyGpuBenchmark: (mode: ResolutionMode) => void
 }
 
 type PersistedV0 = {
@@ -43,6 +46,7 @@ export const useSettings = create<GraphicsSettings>()(
       resolutionMode: 'auto',
       crackle: true,
       reflections: true,
+      gpuBenchmarked: false,
 
       setSoftShadows: (softShadows) => set({ softShadows }),
       setAmbientOcclusion: (ambientOcclusion) => set({ ambientOcclusion }),
@@ -50,13 +54,14 @@ export const useSettings = create<GraphicsSettings>()(
       setResolutionMode: (resolutionMode) => set({ resolutionMode }),
       setCrackle: (crackle) => set({ crackle }),
       setReflections: (reflections) => set({ reflections }),
+      applyGpuBenchmark: (resolutionMode) => set({ resolutionMode, gpuBenchmarked: true }),
     }),
     {
       name: 'record-room-graphics',
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
-        const s = persisted as PersistedV0 & { crackle?: boolean; reflections?: boolean }
-        let state: PersistedV0 & { crackle?: boolean; reflections?: boolean } = s
+        const s = persisted as PersistedV0 & { crackle?: boolean; reflections?: boolean; gpuBenchmarked?: boolean }
+        let state: PersistedV0 & { crackle?: boolean; reflections?: boolean; gpuBenchmarked?: boolean } = s
         if (!s.resolutionMode) {
           state = {
             ...s,
@@ -65,6 +70,8 @@ export const useSettings = create<GraphicsSettings>()(
         }
         if (version < 2) state = { ...state, crackle: state.crackle ?? true }
         if (version < 3) state = { ...state, reflections: state.reflections ?? true }
+        // Existing installs keep their resolution choice — skip first-visit benchmark.
+        if (version < 4) state = { ...state, gpuBenchmarked: true }
         return state as GraphicsSettings
       },
       partialize: (s) => ({
@@ -74,6 +81,7 @@ export const useSettings = create<GraphicsSettings>()(
         resolutionMode: s.resolutionMode,
         crackle: s.crackle,
         reflections: s.reflections,
+        gpuBenchmarked: s.gpuBenchmarked,
       }),
     },
   ),

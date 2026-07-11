@@ -128,7 +128,7 @@ export function SettingsMenu({
       <div className="settings__row settings__row--stack">
         <div>
           <div className="settings__label">Resolution</div>
-          <div className="settings__hint">Auto softens at golden hour; High at night</div>
+          <div className="settings__hint">Auto softens at golden hour; High up to 2× DPR</div>
         </div>
         <Segmented<ResolutionMode>
           value={s.resolutionMode}

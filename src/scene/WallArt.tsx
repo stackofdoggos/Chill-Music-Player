@@ -1,4 +1,5 @@
 import type { ThreeEvent } from '@react-three/fiber'
+import { useMemo } from 'react'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 import { dragActiveOrRecent, useStore } from '../state/store'
@@ -23,17 +24,23 @@ function FramedArt({
   width: number
 }) {
   const tex = useTexture(src)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.minFilter = THREE.LinearMipmapLinearFilter
-  tex.generateMipmaps = true
 
-  const img = tex.image as HTMLImageElement
-  const aspect = img.width / img.height
-  const artW = width
-  const artH = width / aspect
-  const pad = FRAME.border + FRAME.matPad
-  const outerW = artW + pad * 2
-  const outerH = artH + pad * 2
+  const { artW, artH, outerW, outerH } = useMemo(() => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.minFilter = THREE.LinearMipmapLinearFilter
+    tex.generateMipmaps = true
+    const img = tex.image as HTMLImageElement
+    const aspect = img.width / img.height
+    const aw = width
+    const ah = width / aspect
+    const pad = FRAME.border + FRAME.matPad
+    return {
+      artW: aw,
+      artH: ah,
+      outerW: aw + pad * 2,
+      outerH: ah + pad * 2,
+    }
+  }, [tex, width])
 
   return (
     <group position={position}>
