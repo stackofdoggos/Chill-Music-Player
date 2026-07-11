@@ -432,11 +432,12 @@ export function hazeBlend(phase: number): number {
 
 /** Pixel ratio for the canvas — auto blends 1× haze into device DPR by time of day. */
 export function effectiveDpr(phase: number, mode: 'auto' | 'standard' | 'high'): number {
-  const cap =
-    typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 2
+  const device =
+    typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
   if (mode === 'standard') return 1
-  if (mode === 'high') return cap
-  return THREE.MathUtils.lerp(cap, 1, hazeBlend(phase))
+  if (mode === 'high') return Math.min(device, 2)
+  const autoCap = Math.min(device, 2)
+  return THREE.MathUtils.lerp(autoCap, 1, hazeBlend(phase))
 }
 
 /**
