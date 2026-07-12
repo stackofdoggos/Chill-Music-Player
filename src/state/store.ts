@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Album } from '../albums'
+import { DEFAULT_DAY_PHASE } from '../scene/dayNight'
 import { DISPLAY_SLOTS, basketIndexFor } from '../scene/layout'
 
 export type View = 'overview' | 'player' | 'shelf' | 'volume' | 'arm' | 'art'
@@ -98,7 +99,7 @@ export const useStore = create<State>((set, get) => ({
   lidOpen: false,
   hoveredAlbumId: null,
   basketOut: null,
-  dayPhase: 0.74,
+  dayPhase: DEFAULT_DAY_PHASE,
 
   setAlbums: (albums) => set({ albums }),
   setView: (view) => set({ view, hoveredAlbumId: view === 'shelf' ? get().hoveredAlbumId : null }),

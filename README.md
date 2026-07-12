@@ -33,7 +33,7 @@ Audio requires clicking **Enter — sound on** on the loading screen (browser ge
 ## Day–night lighting (dev)
 
 A keyframed 0–1 cycle drives window sun position, wall tints, bloom, vignette, and
-`scene.environmentIntensity`. Defaults to golden hour (`dayPhase` 0.65 in the store).
+`scene.environmentIntensity`. Defaults to **Sunset** (`dayPhase` 0.74 in the store).
 
 The **Light** slider (bottom-right, dev UI) scrubs the cycle. Remove `DayNightSlider` from
 `App.tsx` before a public release if you do not want it live.

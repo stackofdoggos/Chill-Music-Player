@@ -6,7 +6,7 @@ import { requestUnfocus, useStore } from '../state/store'
 import { useSettings } from '../state/settings'
 import { engine } from '../audio/engine'
 import { STATIONS } from './layout'
-import { effectiveDpr, sampleAtmosphere } from './dayNight'
+import { effectiveDpr, sampleAtmosphere, DEFAULT_DAY_PHASE } from './dayNight'
 import { PostFxEffects } from './PostFxEffects'
 import { Lighting } from './Lighting'
 import { SceneModelProvider } from './SceneModel'
@@ -104,9 +104,10 @@ export function Experience({ active }: { active: boolean }) {
       frameloop={active ? 'demand' : 'never'}
       dpr={dpr}
       camera={{ fov: 40, position: STATIONS.overview.pos.toArray(), near: 0.05, far: 30 }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene }) => {
         gl.shadowMap.enabled = true
         gl.shadowMap.type = THREE.PCFShadowMap
+        scene.background = sampleAtmosphere(DEFAULT_DAY_PHASE).background.clone()
       }}
       onPointerMissed={() => requestUnfocus()}
     >

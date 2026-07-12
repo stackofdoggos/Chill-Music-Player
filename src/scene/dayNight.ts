@@ -1,6 +1,11 @@
 import * as THREE from 'three'
 
 /** 0–1 cycle: night → dawn → day → golden hour → sunset → dusk → night */
+
+/** Default lighting when the site opens — Sunset keyframe. */
+export const DEFAULT_DAY_PHASE = 0.74
+
+export const DEFAULT_DAY_BACKGROUND = '#a87858'
 export type Atmosphere = {
   background: THREE.Color
   hemiSky: THREE.Color

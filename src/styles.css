@@ -10,7 +10,7 @@ body,
   height: 100%;
   overflow: hidden;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  background: #e8e4dc;
+  background: #a87858;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,7 +38,7 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e8e4dc;
+  background: #a87858;
   color: #2b2926;
   transition:
     opacity 1.5s cubic-bezier(0.33, 1, 0.68, 1),
