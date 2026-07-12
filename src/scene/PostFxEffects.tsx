@@ -12,8 +12,10 @@ import { useStore } from '../state/store'
 
 export function PostFxEffects({ ao }: { ao: boolean }) {
   const dayPhase = useStore((s) => s.dayPhase)
+  const view = useStore((s) => s.view)
   const resolutionMode = useSettings((s) => s.resolutionMode)
   const a = sampleAtmosphere(dayPhase)
+  const clarityView = view === 'shelf' || view === 'art' || view === 'overview'
 
   const softnessEffect = useMemo(() => new SoftnessEffect(), [])
   const temporalEffect = useMemo(() => new TemporalBlendEffect(), [])
@@ -34,9 +36,10 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
   useFrame(() => {
     const s = usePostFx.getState()
     const autoBlurScale = resolutionMode === 'auto' ? 1 / 3 : 1
+    const clarity = clarityView ? 0.38 : 1
     softnessEffect.radius = s.softnessRadius
-    softnessEffect.blendMode.setOpacity(s.softness * autoBlurScale)
-    temporalEffect.blend = s.temporalBlend
+    softnessEffect.blendMode.setOpacity(s.softness * autoBlurScale * clarity)
+    temporalEffect.blend = s.temporalBlend * (clarityView ? 0.45 : 1)
     grainEffect.blendMode.setOpacity(s.grain)
     chromaticEffect.offset.set(s.chromaticX, s.chromaticY)
     if (chromaticEffect.radialModulation !== s.chromaticRadial) {
@@ -47,7 +50,14 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
 
   return (
     <>
-      {ao && <N8AO aoRadius={0.28} intensity={2.6} distanceFalloff={0.6} halfRes />}
+      {ao && (
+        <N8AO
+          aoRadius={0.28}
+          intensity={clarityView ? 3.1 : 2.6}
+          distanceFalloff={0.6}
+          halfRes
+        />
+      )}
       <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
       <primitive object={softnessEffect} />
       <primitive object={chromaticEffect} />

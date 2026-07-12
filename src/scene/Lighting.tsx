@@ -87,12 +87,9 @@ export function Lighting() {
       lamp.current.intensity = a.lampIntensity
     }
     if (windowLight.current) {
-      // soft area glow from the window pane — gives walls/floor the gentle
-      // wraparound falloff a real window produces (no shadows; the spotlight
-      // above still provides directional shadowing)
       windowLight.current.color.copy(a.windowEmissive)
-      windowLight.current.intensity = a.windowEmissiveIntensity * 1.9 + a.hemiIntensity * 0.6
-      // default is * 1.5, * 0.6
+      // Keep window warm but don't orange-wash the room — rect scales with emissive only.
+      windowLight.current.intensity = a.windowEmissiveIntensity * 1.15 + a.hemiIntensity * 0.32
     }
   }, -1)
 

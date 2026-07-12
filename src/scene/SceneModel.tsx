@@ -8,19 +8,57 @@ import {
 } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF } from '@react-three/drei'
+import { useGLTF, useTexture } from '@react-three/drei'
 import type { MeshStandardMaterial } from 'three'
 import * as THREE from 'three'
+import { assetUrl } from '../assetUrl'
 import { engine } from '../audio/engine'
 import { dragActiveOrRecent, requestUnfocus, useStore } from '../state/store'
 import { ANCHOR_NAMES } from './anchors'
-import { isShelfFocusPoint } from './layout'
+import { isShelfFocusPoint, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { DeskTop } from './DeskTop'
 import { woodTexture } from './textures'
 import { GLB_PATH, GLB_USE_DRACO } from './preloadScene'
 
 const GLB_PATH_LOCAL = GLB_PATH
+
+/** ~2 m microcement tile — keeps trowel marks at a believable scale on the walls. */
+const WALL_TILE_M = 2
+const WALL_BASE = new THREE.Color('#e8e4de')
+const wallTintScratch = new THREE.Color()
+
+function cloneTiled(src: THREE.Texture, repeatX: number, repeatY: number) {
+  const t = src.clone()
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(repeatX, repeatY)
+  t.needsUpdate = true
+  return t
+}
+
+const WALNUT_EDGE = new THREE.Color('#241610')
+const SHELF_BASE_METAL = new THREE.Color('#0a0a0b')
+
+function shelfWalnutMaps(
+  diff: THREE.Texture,
+  nor: THREE.Texture,
+  rough: THREE.Texture,
+) {
+  /** GLB shelf UVs are world-space metres / TILE_M — do not repeat again. */
+  const mk = (src: THREE.Texture) => {
+    const t = src.clone()
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(1, 1)
+    t.rotation = 0
+    t.needsUpdate = true
+    return t
+  }
+  return {
+    map: mk(diff),
+    normalMap: mk(nor),
+    roughnessMap: mk(rough),
+  }
+}
 
 type SceneModelContextValue = {
   nodes: Record<string, THREE.Object3D>
@@ -103,6 +141,16 @@ function setupMesh(obj: THREE.Object3D) {
 
 export function SceneModelProvider({ children }: { children: ReactNode }) {
   const gltf = useGLTF(GLB_PATH_LOCAL, GLB_USE_DRACO)
+  const [wallDiff, wallNor, wallRough] = useTexture([
+    assetUrl('textures/wall_diff.jpg'),
+    assetUrl('textures/wall_nor.png'),
+    assetUrl('textures/wall_rough.jpg'),
+  ])
+  const [walnutDiff, walnutNor, walnutRough] = useTexture([
+    assetUrl('textures/walnut_diff.jpg'),
+    assetUrl('textures/walnut_nor.jpg'),
+    assetUrl('textures/walnut_rough.jpg'),
+  ])
   const { scene, nodes } = useMemo(() => {
     if (!gltf.scene.userData.__roomSetup) {
       gltf.scene.traverse(setupMesh)
@@ -129,6 +177,87 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
     rightWallMat.current = pick('wall_right') ?? null
     ceilingMat.current = pick('ceiling') ?? null
     windowMat.current = pick('window_glass') ?? null
+
+    wallDiff.colorSpace = THREE.SRGBColorSpace
+    for (const t of [wallDiff, wallNor, wallRough]) {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping
+      t.anisotropy = 4
+    }
+
+    const applyWall = (name: string, widthM: number, heightM: number) => {
+      const mesh = nodes[name] as THREE.Mesh | undefined
+      const raw = mesh?.material
+      const mat = (Array.isArray(raw) ? raw[0] : raw) as MeshStandardMaterial | undefined
+      if (!mat) return
+      const rx = widthM / WALL_TILE_M
+      const ry = heightM / WALL_TILE_M
+      mat.map = cloneTiled(wallDiff, rx, ry)
+      mat.normalMap = cloneTiled(wallNor, rx, ry)
+      mat.roughnessMap = cloneTiled(wallRough, rx, ry)
+      mat.roughness = 1
+      mat.metalness = 0
+      mat.normalScale.set(0.42, 0.42)
+      mat.color.copy(WALL_BASE)
+      mat.needsUpdate = true
+    }
+    applyWall('wall_back', ROOM.w, ROOM.h)
+    applyWall('wall_left', ROOM.d + 2, ROOM.h)
+    applyWall('wall_right', ROOM.d + 2, ROOM.h)
+
+    walnutDiff.colorSpace = THREE.SRGBColorSpace
+    for (const t of [walnutDiff, walnutNor, walnutRough]) {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping
+      t.anisotropy = 4
+    }
+
+    const applyShelfWalnut = (name: string, clearcoat: number) => {
+      const mesh = nodes[name] as THREE.Mesh | undefined
+      if (!mesh?.geometry) return
+      const maps = shelfWalnutMaps(walnutDiff, walnutNor, walnutRough)
+      const raw = mesh.material
+      const geo = mesh.geometry as THREE.BufferGeometry | undefined
+      const hasEdgeSlot = Array.isArray(raw)
+        ? raw.length > 1
+        : (geo?.groups?.length ?? 0) > 1
+      const prev = (Array.isArray(raw) ? raw[0] : raw) as MeshStandardMaterial | undefined
+      const walnutMat = new THREE.MeshPhysicalMaterial({
+        ...maps,
+        color: prev?.color?.clone() ?? new THREE.Color('#ffffff'),
+        metalness: 0,
+        roughness: 1,
+        normalScale: new THREE.Vector2(0.58, 0.58),
+        clearcoat,
+        clearcoatRoughness: 0.42,
+        envMapIntensity: 0.85,
+      })
+      if (hasEdgeSlot) {
+        const edgeMat = new THREE.MeshStandardMaterial({
+          color: WALNUT_EDGE,
+          roughness: 0.88,
+          metalness: 0,
+        })
+        mesh.material = [walnutMat, edgeMat]
+      } else {
+        mesh.material = walnutMat
+      }
+    }
+
+    applyShelfWalnut('shelf_side_L', 0.12)
+    applyShelfWalnut('shelf_side_R', 0.12)
+    applyShelfWalnut('shelf_back', 0.12)
+    for (const name of ['shelf_board_0', 'shelf_board_1', 'shelf_board_2', 'shelf_top']) {
+      applyShelfWalnut(name, 0.24)
+    }
+    for (const name of ['shelf_foot_L', 'shelf_foot_R']) {
+      const mesh = nodes[name] as THREE.Mesh | undefined
+      if (!mesh) continue
+      mesh.material = new THREE.MeshStandardMaterial({
+        color: SHELF_BASE_METAL,
+        metalness: 0.92,
+        roughness: 0.38,
+        envMapIntensity: 1.1,
+      })
+    }
 
     const applyWood = (name: string, repeatX: number, repeatY: number, light = false, roughness = 0.7) => {
       const mesh = nodes[name] as THREE.Mesh | undefined
@@ -242,12 +371,13 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
         return out
       }
     }
-  }, [nodes])
+  }, [nodes, wallDiff, wallNor, wallRough, walnutDiff, walnutNor, walnutRough])
 
   useFrame(() => {
     const a = sampleAtmosphere(useStore.getState().dayPhase)
+    wallTintScratch.copy(WALL_BASE).lerp(a.wallColor, 0.3)
     for (const ref of [backWallMat, leftWallMat, rightWallMat]) {
-      if (ref.current) ref.current.color.copy(a.wallColor)
+      if (ref.current) ref.current.color.copy(wallTintScratch)
     }
     if (ceilingMat.current) {
       ceilingMat.current.emissive.copy(a.ceilingEmissive)

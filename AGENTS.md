@@ -16,7 +16,7 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | File | Owns |
 | --- | --- |
 | `src/state/store.ts` | zustand store: `view`, `selectedAlbumId` (shelf browse), `platterAlbumId`, `shelfPhase` + `recordPhase`, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
-| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; panel in `DayNightMenu` (`src/ui/DayNightSlider.tsx`). |
+| `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `applyInteriorDiscipline()` desaturates key/fill/hemi/ceiling/wall toward neutral bounce at golden hour while **window emissive stays warm** for the pane + shafts. `dayPhase` in store; panel in `DayNightMenu` (`src/ui/DayNightSlider.tsx`). |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |

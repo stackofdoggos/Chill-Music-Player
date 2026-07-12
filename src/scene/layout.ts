@@ -98,7 +98,9 @@ export const SHELF = {
   /** shelf board centre heights, bottom → top (wicker bins live below boardY[0]) */
   boardY: [0.4675, 0.8625, 1.2925],
   topBoardY: 1.7225,
-  sideTopY: 1.75, // side panels finish flush with the top board
+  sideTopY: 1.81, // side panels extend 6 cm above the top board
+  /** horizontal boards sit 6 cm behind the side-panel front face (into the unit). */
+  boardRecess: 0.06,
 };
 
 export const SLEEVE = { size: 0.315, thickness: 0.0145 };

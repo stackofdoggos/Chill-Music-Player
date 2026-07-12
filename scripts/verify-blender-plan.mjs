@@ -33,7 +33,7 @@ const SHELF = {
   footH: 0.06,
   boardY: [0.4675, 0.8625, 1.2925],
   topBoardY: 1.7225,
-  sideTopY: 1.75,
+  sideTopY: 1.81,
 }
 const SLEEVE = { size: 0.315, thickness: 0.0145 }
 const SLEEVE_LEAN = 0.13

@@ -95,8 +95,10 @@ function AtmospherePost() {
 
 export function Experience({ active }: { active: boolean }) {
   const dayPhase = useStore((s) => s.dayPhase)
+  const view = useStore((s) => s.view)
   const resolutionMode = useSettings((s) => s.resolutionMode)
-  const dpr = effectiveDpr(dayPhase, resolutionMode)
+  const clarityView = view === 'shelf' || view === 'art'
+  const dpr = effectiveDpr(dayPhase, resolutionMode, clarityView)
   return (
     <Canvas
       frameloop={active ? 'demand' : 'never'}
