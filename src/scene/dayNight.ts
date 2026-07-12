@@ -111,7 +111,7 @@ const KEYFRAMES: RawKeyframe[] = [
     windowEmissiveIntensity: 0.35,
     ceilingEmissive: '#d8dce8',
     ceilingEmissiveIntensity: 0.25,
-    wallColor: '#d8d6d2',
+    wallColor: '#d8dce4',
     environmentIntensity: 0.35,
     sunAngle: 0.48,
     bloomIntensity: 0.22,
@@ -139,7 +139,7 @@ const KEYFRAMES: RawKeyframe[] = [
     windowEmissiveIntensity: 0.5,
     ceilingEmissive: '#e8ecf0',
     ceilingEmissiveIntensity: 0.4,
-    wallColor: '#e4e0da',
+    wallColor: '#ece9e2',
     environmentIntensity: 0.65,
     sunAngle: 0.42,
     bloomIntensity: 0.16,
@@ -167,7 +167,7 @@ const KEYFRAMES: RawKeyframe[] = [
     windowEmissiveIntensity: 0.55,
     ceilingEmissive: '#b8b4ac',
     ceilingEmissiveIntensity: 0.55,
-    wallColor: '#e4e0da',
+    wallColor: '#ece9e2',
     environmentIntensity: 1,
     sunAngle: 0.42,
     bloomIntensity: 0.18,
@@ -195,11 +195,11 @@ const KEYFRAMES: RawKeyframe[] = [
     windowEmissiveIntensity: 0.85,
     ceilingEmissive: '#d8c8b0',
     ceilingEmissiveIntensity: 0.42,
-    wallColor: '#dcd6ce',
+    wallColor: '#e8ddd0',
     environmentIntensity: 0.9,
     sunAngle: 0.5,
-    bloomIntensity: 0.26,
-    bloomThreshold: 0.78,
+    bloomIntensity: 0.32,
+    bloomThreshold: 0.7,
     vignetteOffset: 0.25,
     vignetteDarkness: 0.48,
   },
@@ -221,13 +221,13 @@ const KEYFRAMES: RawKeyframe[] = [
     lampIntensity: 0.12,
     windowEmissive: '#ffb040',
     windowEmissiveIntensity: 1.65,
-    ceilingEmissive: '#d4ccc4',
+    ceilingEmissive: '#e8a060',
     ceilingEmissiveIntensity: 0.38,
-    wallColor: '#d0cac2',
+    wallColor: '#dcc8a8',
     environmentIntensity: 0.8,
     sunAngle: 0.58,
-    bloomIntensity: 0.38,
-    bloomThreshold: 0.72,
+    bloomIntensity: 0.58,
+    bloomThreshold: 0.42,
     vignetteOffset: 0.3,
     vignetteDarkness: 0.56,
   },
@@ -249,13 +249,13 @@ const KEYFRAMES: RawKeyframe[] = [
     lampIntensity: 0.28,
     windowEmissive: '#ff7828',
     windowEmissiveIntensity: 2.1,
-    ceilingEmissive: '#c8c0b8',
+    ceilingEmissive: '#c87848',
     ceilingEmissiveIntensity: 0.32,
-    wallColor: '#c4bcb4',
+    wallColor: '#c8a888',
     environmentIntensity: 0.65,
     sunAngle: 0.62,
-    bloomIntensity: 0.42,
-    bloomThreshold: 0.68,
+    bloomIntensity: 0.68,
+    bloomThreshold: 0.35,
     vignetteOffset: 0.32,
     vignetteDarkness: 0.62,
   },
@@ -319,39 +319,6 @@ const KEYFRAMES: RawKeyframe[] = [
 
 const c = (hex: string) => new THREE.Color(hex)
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
-
-/** Desaturate interior-facing lights toward gray plaster bounce at golden hour. */
-const NEUTRAL_BOUNCE = new THREE.Color('#e8e4de')
-const _hsl = { h: 0, s: 0, l: 0 }
-
-function interiorNeutralBias(color: THREE.Color, strength: number) {
-  if (strength <= 0) return
-  color.lerp(NEUTRAL_BOUNCE, strength * 0.62)
-  color.getHSL(_hsl)
-  color.setHSL(_hsl.h, _hsl.s * (1 - strength * 0.52), _hsl.l)
-}
-
-/**
- * Interior surfaces (walls, wood) should stay neutral under warm sun — only the
- * window pane / exterior sky keeps saturated warmth. Mutates `out` in place.
- */
-function applyInteriorDiscipline(out: Atmosphere, phase: number) {
-  const warm = hazeBlend(phase)
-  if (warm <= 0) return
-
-  interiorNeutralBias(out.keyColor, warm)
-  interiorNeutralBias(out.fillColor, warm * 0.88)
-  interiorNeutralBias(out.hemiSky, warm * 0.72)
-  interiorNeutralBias(out.hemiGround, warm * 0.82)
-  interiorNeutralBias(out.ceilingEmissive, warm * 0.78)
-  interiorNeutralBias(out.wallColor, warm * 0.42)
-
-  out.fillIntensity *= 1 - warm * 0.4
-  out.hemiIntensity *= 1 - warm * 0.14
-
-  out.bloomThreshold = Math.max(out.bloomThreshold, THREE.MathUtils.lerp(out.bloomThreshold, 0.76, warm))
-  out.bloomIntensity *= THREE.MathUtils.lerp(1, 0.5, warm)
-}
 
 function lerpColor(a: THREE.Color, b: THREE.Color, t: number, out: THREE.Color) {
   out.r = a.r + (b.r - a.r) * t
@@ -439,9 +406,7 @@ export function sampleAtmosphere(phase: number, out = scratch): Atmosphere {
   const b = KEYFRAMES[i + 1]
   const span = b.t - a.t
   const local = span > 0 ? (t - a.t) / span : 0
-  lerpRaw(a, b, local, out)
-  applyInteriorDiscipline(out, t)
-  return out
+  return lerpRaw(a, b, local, out)
 }
 
 /** 0 = crisp (night), 1 = soft 1× haze (golden hour & sunset). */
