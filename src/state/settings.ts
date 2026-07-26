@@ -42,7 +42,7 @@ export const useSettings = create<GraphicsSettings>()(
     (set) => ({
       softShadows: true,
       ambientOcclusion: true,
-      lightShafts: 'pronounced',
+      lightShafts: 'subtle',
       resolutionMode: 'auto',
       crackle: true,
       reflections: true,
@@ -58,10 +58,15 @@ export const useSettings = create<GraphicsSettings>()(
     }),
     {
       name: 'record-room-graphics',
-      version: 4,
+      version: 6,
       migrate: (persisted, version) => {
-        const s = persisted as PersistedV0 & { crackle?: boolean; reflections?: boolean; gpuBenchmarked?: boolean }
-        let state: PersistedV0 & { crackle?: boolean; reflections?: boolean; gpuBenchmarked?: boolean } = s
+        const s = persisted as PersistedV0 & {
+          crackle?: boolean
+          reflections?: boolean
+          gpuBenchmarked?: boolean
+          bookcaseSmooth?: number
+        }
+        let state: typeof s = s
         if (!s.resolutionMode) {
           state = {
             ...s,
@@ -72,6 +77,11 @@ export const useSettings = create<GraphicsSettings>()(
         if (version < 3) state = { ...state, reflections: state.reflections ?? true }
         // Existing installs keep their resolution choice — skip first-visit benchmark.
         if (version < 4) state = { ...state, gpuBenchmarked: true }
+        // v6: bookcaseSmooth removed — blur is baked into the shelf materials.
+        if (version < 6) {
+          const { bookcaseSmooth: _drop, ...rest } = state
+          state = rest
+        }
         return state as GraphicsSettings
       },
       partialize: (s) => ({

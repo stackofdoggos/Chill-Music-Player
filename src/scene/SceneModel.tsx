@@ -20,32 +20,20 @@ import { sampleAtmosphere } from './dayNight'
 import { DeskTop } from './DeskTop'
 import { woodTexture } from './textures'
 import { GLB_PATH, GLB_USE_DRACO } from './preloadScene'
+import {
+  BOOKCASE_SMOOTH,
+  createWalnutSmoothBundle,
+  resolveShelfMesh,
+  walnutNormalScale,
+} from './walnutSmooth'
 
 const GLB_PATH_LOCAL = GLB_PATH
 
-const WALNUT_EDGE = new THREE.Color('#241610')
-const SHELF_BASE_METAL = new THREE.Color('#0a0a0b')
-
-function shelfWalnutMaps(
-  diff: THREE.Texture,
-  nor: THREE.Texture,
-  rough: THREE.Texture,
-) {
-  /** GLB shelf UVs are world-space metres / TILE_M — do not repeat again. */
-  const mk = (src: THREE.Texture) => {
-    const t = src.clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(1, 1)
-    t.rotation = 0
-    t.needsUpdate = true
-    return t
-  }
-  return {
-    map: mk(diff),
-    normalMap: mk(nor),
-    roughnessMap: mk(rough),
-  }
-}
+/** Warm honey tint multiplied over the walnut albedo. */
+const WALNUT_TINT = new THREE.Color('#f2c49a')
+const WALNUT_EDGE = new THREE.Color('#3a1e12')
+/** Bookshelf pegs / feet — dark matte grey */
+const SHELF_BASE_METAL = new THREE.Color('#484a4f')
 
 type SceneModelContextValue = {
   nodes: Record<string, THREE.Object3D>
@@ -147,6 +135,7 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
   const rightWallMat = useRef<MeshStandardMaterial | null>(null)
   const ceilingMat = useRef<MeshStandardMaterial | null>(null)
   const windowMat = useRef<MeshStandardMaterial | null>(null)
+  const walnutSmooth = useRef<ReturnType<typeof createWalnutSmoothBundle> | null>(null)
 
   useEffect(() => {
     const pick = (name: string) => {
@@ -166,22 +155,28 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       t.anisotropy = 4
     }
 
+    walnutSmooth.current?.dispose()
+    const smooth = createWalnutSmoothBundle(walnutDiff, walnutNor, walnutRough)
+    walnutSmooth.current = smooth
+    smooth.setAmount(BOOKCASE_SMOOTH)
+    const nScale = walnutNormalScale(BOOKCASE_SMOOTH)
+
     const applyShelfWalnut = (name: string, clearcoat: number) => {
-      const mesh = nodes[name] as THREE.Mesh | undefined
+      const mesh = resolveShelfMesh(nodes, name)
       if (!mesh?.geometry) return
-      const maps = shelfWalnutMaps(walnutDiff, walnutNor, walnutRough)
       const raw = mesh.material
       const geo = mesh.geometry as THREE.BufferGeometry | undefined
       const hasEdgeSlot = Array.isArray(raw)
         ? raw.length > 1
         : (geo?.groups?.length ?? 0) > 1
-      const prev = (Array.isArray(raw) ? raw[0] : raw) as MeshStandardMaterial | undefined
       const walnutMat = new THREE.MeshPhysicalMaterial({
-        ...maps,
-        color: prev?.color?.clone() ?? new THREE.Color('#ffffff'),
+        map: smooth.maps.map,
+        normalMap: smooth.maps.normalMap,
+        roughnessMap: smooth.maps.roughnessMap,
+        color: WALNUT_TINT.clone(),
         metalness: 0,
         roughness: 1,
-        normalScale: new THREE.Vector2(0.58, 0.58),
+        normalScale: new THREE.Vector2(nScale, nScale),
         clearcoat,
         clearcoatRoughness: 0.42,
         envMapIntensity: 0.85,
@@ -205,13 +200,13 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       applyShelfWalnut(name, 0.24)
     }
     for (const name of ['shelf_foot_L', 'shelf_foot_R']) {
-      const mesh = nodes[name] as THREE.Mesh | undefined
+      const mesh = resolveShelfMesh(nodes, name) ?? (nodes[name] as THREE.Mesh | undefined)
       if (!mesh) continue
       mesh.material = new THREE.MeshStandardMaterial({
         color: SHELF_BASE_METAL,
-        metalness: 0.92,
-        roughness: 0.38,
-        envMapIntensity: 1.1,
+        metalness: 0.45,
+        roughness: 0.78,
+        envMapIntensity: 0.25,
       })
     }
 
@@ -326,6 +321,11 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
         console.table(out)
         return out
       }
+    }
+
+    return () => {
+      walnutSmooth.current?.dispose()
+      walnutSmooth.current = null
     }
   }, [nodes, walnutDiff, walnutNor, walnutRough])
 
