@@ -17,7 +17,6 @@ import { dragActiveOrRecent, requestUnfocus, useStore } from '../state/store'
 import { ANCHOR_NAMES } from './anchors'
 import { isShelfFocusPoint } from './layout'
 import { sampleAtmosphere } from './dayNight'
-import { DeskTop } from './DeskTop'
 import { woodTexture } from './textures'
 import { GLB_PATH, GLB_USE_DRACO } from './preloadScene'
 import {
@@ -54,7 +53,6 @@ const HIDDEN_MESHES = new Set([
   'wall_art_frame',
   'wall_art_mat',
   'wall_art_painting',
-  'desk_top',
 ])
 
 /** Prop mesh name prefixes after GLB export (parent `prop_*` empties may be applied away). */
@@ -411,7 +409,7 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       if (action === 'putBack') engine.playSfx('sleeveIn', 0.85, 1.05)
       return
     }
-    if (['floor', 'wall_left', 'wall_right', 'skirting', 'ceiling'].includes(name)) {
+    if (['floor', 'area_rug', 'wall_left', 'wall_right', 'skirting', 'ceiling'].includes(name)) {
       toOverview(e)
     }
   }
@@ -421,7 +419,6 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
   return (
     <SceneModelContext.Provider value={value}>
       <primitive object={scene} onClick={onPointer} />
-      <DeskTop />
       {children}
     </SceneModelContext.Provider>
   )
