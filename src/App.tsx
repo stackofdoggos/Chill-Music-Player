@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Experience } from './scene/Experience'
-import { LoadingScreen } from './ui/LoadingScreen'
+import { LoadingAssemble } from './loading/LoadingAssemble'
 import { NowPlaying } from './ui/NowPlaying'
 import { LightDot } from './ui/DayNightSlider'
 import { VinylFavicon } from './ui/Favicon'
@@ -14,24 +14,10 @@ import { preloadSceneAssets } from './scene/preloadScene'
 import { useBoot } from './state/boot'
 import { runGpuBenchmarkOnce } from './gpu/runGpuBenchmarkOnce'
 
-const BOOT_STATUS = [
-  'Fetching catalog…',
-  'Loading sleeve artwork…',
-  'Indexing tracks…',
-  'Preparing audio engine…',
-  'Generating scene…',
-  'Loading room model…',
-  'Placing props…',
-  'Calibrating tonearm…',
-  'Warming the room…',
-] as const
-
+/** Keep boot long enough for one assemble cycle to read as intentional. */
 const MIN_BOOT_MS = 5200
-const STATUS_MS = MIN_BOOT_MS / BOOT_STATUS.length
 
 export default function App() {
-  const [loadProgress, setLoadProgress] = useState(0)
-  const [loadStatus, setLoadStatus] = useState<string>(BOOT_STATUS[0])
   const [ready, setReady] = useState(false)
   const [entered, setEntered] = useState(false)
   const [showLoading, setShowLoading] = useState(true)
@@ -61,22 +47,8 @@ export default function App() {
     let id = 0
     const tick = () => {
       const elapsed = performance.now() - bootStart.current
-      const step = Math.min(BOOT_STATUS.length - 1, Math.floor(elapsed / STATUS_MS))
-      setLoadStatus(BOOT_STATUS[step])
-
-      const { albumProgress, sceneProgress, albumsReady, sceneReady } = useBoot.getState()
-      const assetTarget = Math.min(1, albumProgress * 0.15 + sceneProgress * 0.75)
-      const timeTarget = Math.min(1, elapsed / MIN_BOOT_MS)
-      const target = Math.min(1, assetTarget + timeTarget * 0.1)
-      const cap = albumsReady && sceneReady ? 1 : Math.min(0.92, target)
-
-      setLoadProgress((p) => {
-        const eased = p + (Math.min(target, cap) - p) * 0.08
-        return Math.min(cap, eased + 0.001)
-      })
-
+      const { albumsReady, sceneReady } = useBoot.getState()
       if (albumsReady && sceneReady && elapsed >= MIN_BOOT_MS) {
-        setLoadProgress(1)
         setReady(true)
         return
       }
@@ -119,9 +91,7 @@ export default function App() {
         <Experience active={entered} />
       </div>
       {showLoading && (
-        <LoadingScreen
-          progress={loadProgress}
-          status={loadStatus}
+        <LoadingAssemble
           ready={ready}
           entered={entered}
           onEnter={enter}

@@ -8,6 +8,7 @@ useGLTF.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
 
 export const GLB_PATH = assetUrl('models/room.glb')
 export const GLB_USE_DRACO = true
+export const EXPLODED_PLAYER_GLB = assetUrl('models/exploded_player.glb')
 
 const TEXTURES = [
   assetUrl('textures/walnut_diff.jpg'),
@@ -36,5 +37,6 @@ function hookBootProgress() {
 export function preloadSceneAssets() {
   hookBootProgress()
   useGLTF.preload(GLB_PATH, GLB_USE_DRACO)
+  useGLTF.preload(EXPLODED_PLAYER_GLB)
   useTexture.preload(TEXTURES)
 }
