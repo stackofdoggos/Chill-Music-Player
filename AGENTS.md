@@ -16,6 +16,9 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | File | Owns |
 | --- | --- |
 | `src/state/store.ts` | zustand store: `view`, `selectedAlbumId` (shelf browse), `platterAlbumId`, `shelfPhase` + `recordPhase`, power/volume/speed/needle. Also `requestUnfocus()` + drag-end suppression. |
+| `src/loading/introTimeline.ts` | **All Yandhi intro constants**: clip URLs, frame-derived handoff times, beat timings, visit detection (`readIntroMode`), `enterLabel()`. Dev handle: `__intro`. |
+| `src/loading/YandhiIntro.tsx` | The loading sequence: unmute gate → buffer gate → assemble → spin loop → outro → reveal. Owns the phase machine and the three stacked `<video>` elements. |
+| `src/loading/mediaTiming.ts` | Media primitives: `waitForBuffered`, `atTime`, `once` (with timeout), `align`, `fadeOut`. |
 | `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; panel in `DayNightMenu` (`src/ui/DayNightSlider.tsx`). |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
@@ -55,14 +58,128 @@ click the tonearm bearing base/pivot column → `arm` (top-down); clicking the b
 chassis, or anywhere off the player steps back. Unfocusing the player only happens by clicking
 off it or returning the record — never as a side effect of a drag.
 
+## The Yandhi intro (loading screen)
+
+Three silent 30fps 1080p clips in `public/loading/` plus one audio track, all rendered from
+one Blender rig at 72°/s so they are **phase-locked** — which is why the clip changes need no
+cross-fade. Do not re-encode or re-render these without re-deriving the constants:
+
+| clip | frames | notes |
+| --- | --- | --- |
+| `yandhi_assemble.mp4` | 390 / 13.000s | frames 0–10 are pixel-identical (safe freeze point); still 176–208; sticker slides 209–265; constant rotation 266–389 |
+| `yandhi_spin.mp4` | 150 / 5.000s | exactly one 360° revolution, seamless loop |
+| `yandhi_disassemble.mp4` | 267 / 8.900s | `reverse(assemble[0..266])`, played at 1.3× |
+| `yandhi_intro.m4a` | 53.46s | the full track (see below); its frame 0 is the assemble's frame 0 |
+
+The two identities every handoff depends on:
+`assemble[389] == spin[149]` (so assemble → spin[0] continues the rotation) and
+`assemble[266] == spin[26] == disassemble[0]` (the face-on pose the outro cuts from).
+
+**The intro plays once, then not again for a week** (`readIntroMode`): `full` on a first visit or
+after `FULL_INTRO_AFTER_MS`, `none` otherwise, and `none` never mounts `YandhiIntro` at all — App
+renders the room immediately and fades it up when `waitForAssets()` resolves. Two things that path
+has to do for itself, because the intro used to do them: refresh `chill.introLastSeen` (or the
+week would count from the first visit forever, not the last one) and **build the AudioContext on
+the visitor's first gesture**. There is no unmute gate on that path, and a context constructed
+outside a gesture starts suspended and stays that way — `engine.init()` has no resume, so calling
+it at load would leave the room permanently silent. Note a dispatched `Event` is not a gesture: to
+test this you need CDP `Input.dispatchMouseEvent`, not `element.click()`.
+
+**To re-verify after any re-render**: dump frames as raw gray/rgb at low res
+(`ffmpeg -vf "scale=48:27,format=gray" -f rawvideo`) and compare with sum-of-absolute-
+differences. A true match scores well under 1.0; adjacent frames differ by ~2.2. Face-on is
+found as the frame of maximum non-white bounding-box width, disambiguated from the
+back-facing pose by colour saturation (34.0 front vs 26.4 back).
+
+Other facts worth keeping:
+- **The intro uses two framings and animates between them**, because the clips are composed two
+  different ways. The shatter fills the frame edge to edge and has to bleed; everywhere else is
+  just the record on flat void, and that record is 92% of the frame height, so bleeding it crops
+  its top and bottom on any window wider than ~1.93:1 (most maximised ones). `.intro__clip`
+  therefore sizes the element to the clips' own 16:9 rather than using `object-fit` — `min()` is
+  contain, `max()` is cover, and width/height animate between them, which `object-fit` can't.
+  Both endpoints lie on the same ray from the origin, so the box stays exactly 16:9 across the
+  whole move; keep the timing function identical on width, height and scale or that breaks.
+  `.intro--bleed` is driven by the phase machine off `ASSEMBLE_SETTLES_AT` (frame 252). The
+  border-contact windows, measured by scanning a 3px border of every frame for pixels off the
+  corner value: assemble 18–252, disassemble 14–248, spin never. Re-measure if they're
+  re-rendered. **The outro is the tight one** — it opens back out on the face-on hold and has
+  only ~0.71s before the disassemble's debris reaches the edge, hence the shorter `--clip-move`
+  in the bleed state. Verify with the rendered `getBoundingClientRect`, not by simulating the
+  fit in a canvas; it's easy to measure your own assumption instead of the page.
+- **The clips carry no colour-range tags** (`color_range=unknown`), so decoders apply the bt709
+  limited-range default and browsers paint their void at **253**, where `ffmpeg` reads the file
+  as 251. `--intro-void` has to match what the *browser* paints, or every gap the framing leaves
+  shows up as a faint rectangle outline around the video — a 2/255 step, invisible in isolation
+  but plainly visible as a hard edge. Confirmed identical under both of Chrome's GL backends, so
+  it comes from the decode and not the compositor. Measure it from a screenshot, not the file.
+- **The iMessage bubble tail** uses Samuel Kraft's geometry
+  ([ios-chat-bubbles-css](https://samuelkraft.com/blog/ios-chat-bubbles-css)) — the canonical
+  recreation. His numbers are quoted against a 25px tail, so `styles.css` stores them as
+  ratios of `--tail`, and each bubble sets `--tail` to half its own height (iOS keeps the tail
+  height equal to the corner radius, which makes a single-line bubble a true pill). Kraft
+  carves the tail with a **page-coloured `::after`**; this uses a two-layer `mask-image`
+  instead so the carve is transparent, because here the bubble sits over video rather than a
+  known flat colour. If you change `--tail`, change nothing else — the ratios do the rest.
+- **The unmute icon** is built to measurements taken off SF Symbols' own `speaker.slash.fill`
+  (render it with `NSImage.imageWithSystemSymbolName` via `osascript -l JavaScript`, then
+  measure the alpha channel). The ratios, all relative to the cone height: slash ink box
+  1.101×, cone inset 9.8% from that box's left and vertically centred, stroke 0.095×, and the
+  cut 2.70× the stroke. The slash is 45° but **not** on the viewBox diagonal — it sits lower,
+  which is what makes it cross the cone's body instead of shaving off its tip. The gap must be
+  a real hole (an SVG `mask`); a page-coloured copy of the slash underneath reads as a pale
+  stripe wherever it leaves the cone and crosses the button's gradient.
+- Returning visitors download none of the clips at all. Within the full intro, `src` attributes
+  are still attached in sequence so the downloads never compete.
+- The audio element starts ~50–90ms behind the video even when both are fully buffered;
+  `align()` corrects it once, 120ms in, leaving a stable ~50ms. That is well inside the
+  threshold for this material (no sharp picture/sound hit points to sync against), so don't
+  tighten `align()`'s tolerance to chase it — the correcting seek is itself audible.
+- The music is a plain `loop` on the `<audio>` at `MUSIC_VOLUME` (0.6): the spin can be held
+  indefinitely, so the track just repeats if it runs out. It is deliberately **not** tied to the
+  rotation — don't reintroduce a seek-per-revolution. `fadeOut()` ramps from whatever the
+  element's current volume is, so changing `MUSIC_VOLUME` needs nothing else touched.
+- **Where the track comes from.** `yandhi_intro.m4a` is the full 53s audio of the source
+  video the render was made against (`youtu.be/4S4wRQI1MXc`), fetched with the same yt-dlp
+  path as `scripts/fetch-albums.mjs`. The render's own 13s of embedded audio is the **first**
+  13s of that track — confirmed by sample-level cross-correlation at r=0.995, so the clip
+  and the full track share a timeline and nothing needs re-timing. Two corrections are baked
+  into the encode and must be reapplied if you re-fetch: the download is missing the track's
+  first 36ms (pure digital silence in the render), so 1742 samples of silence are prepended
+  to keep frame 0 honest; and the Opus decode peaks at 1.22, so a 0.804 gain keeps AAC from
+  clipping. There is also a 200ms fade on the tail — the track ends loud and mid-phrase, and
+  without it the wrap back to the quiet intro clicks.
+- Beware when re-deriving the offset: this track's loudness is uniform enough that an
+  *envelope* correlation gives a near-tie between lag 0 and a spurious peak at 35.7s
+  (r=0.824 vs 0.832). Only sample-level correlation separates them.
+- Testing: `?intro=full` / `?intro=none` force a path. `__intro.forget()` /
+  `__intro.lastSeenDaysAgo(n)` manipulate the 7-day `chill.introLastSeen` key.
+
 ## Dev helpers (exposed on `window` in dev builds only)
 
 - `__store` — the zustand store. `__store.getState()` for everything; call actions directly.
 - `__engine` — the audio engine. Useful: `.rate`, `.getProgress()`, `.needleDown`, `.platterAngle`.
 - `__proj(x, y, z)` — projects a world point to client pixel coords via the live camera.
-  Use this to compute click targets instead of guessing from screenshots.
+ Use this to compute click targets instead of guessing from screenshots.
+- `__intro` — intro visit memory: `.mode()`, `.forget()`, `.lastSeenDaysAgo(n)`, `.seen()`.
 
 ## Driving the app headlessly (browser MCP / CDP)
+
+No browser MCP or dependency is needed for a scripted run: Node 22+ has a global
+`WebSocket`, so a plain `.mjs` script can attach to Chrome's DevTools Protocol.
+Launch `Google Chrome --headless=new --remote-debugging-port=9333
+--enable-unsafe-swiftshader --use-gl=angle --autoplay-policy=no-user-gesture-required`,
+read the page target from `http://127.0.0.1:9333/json/list`, then drive `Page`,
+`Runtime`, `Input`, `Network` and `Log`. `Input.dispatchMouseEvent` works for real DOM
+buttons (the intro's gate and bubble); only r3f objects need the synthetic-event shim
+below. `--enable-unsafe-swiftshader` is what lets the WebGL room render headless, and
+`--autoplay-policy=no-user-gesture-required` bypasses the gate — which also means a
+headless run **cannot** validate real autoplay-blocking behaviour.
+
+When measuring A/V sync, read both `currentTime` values inside a *single*
+`Runtime.evaluate` expression; two round trips add their own latency to the delta.
+
+
 
 R3F reads `event.offsetX/offsetY`, which are **0 on synthetic PointerEvents** — you must
 override them. Paste this once per page load (`Runtime.evaluate`):

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Experience } from './scene/Experience'
-import { LoadingAssemble } from './loading/LoadingAssemble'
+import { YandhiIntro } from './loading/YandhiIntro'
 import { NowPlaying } from './ui/NowPlaying'
 import { LightDot } from './ui/DayNightSlider'
 import { VinylFavicon } from './ui/Favicon'
@@ -11,17 +11,19 @@ import { SettingsGear } from './ui/SettingsPanel'
 import { TopMenuOverlay } from './ui/TopMenuOverlay'
 import { engine } from './audio/engine'
 import { preloadSceneAssets } from './scene/preloadScene'
-import { useBoot } from './state/boot'
+import { useBoot, waitForAssets } from './state/boot'
+import { markIntroSeen, readIntroMode } from './loading/introTimeline'
 import { runGpuBenchmarkOnce } from './gpu/runGpuBenchmarkOnce'
 
-/** Keep boot long enough for one assemble cycle to read as intentional. */
-const MIN_BOOT_MS = 5200
-
 export default function App() {
-  const [ready, setReady] = useState(false)
+  /** The intro plays on a first visit and then not again for a week; everyone
+   *  else goes straight to the room. Read once — it must not change mid-session. */
+  const [introMode] = useState(readIntroMode)
+  /** true once the room is rendering — done behind the still-opaque intro so
+   *  shaders compile before the dissolve rather than during it. */
+  const [sceneActive, setSceneActive] = useState(false)
   const [entered, setEntered] = useState(false)
-  const [showLoading, setShowLoading] = useState(true)
-  const bootStart = useRef(performance.now())
+  const [showIntro, setShowIntro] = useState(introMode === 'full')
 
   useEffect(() => {
     preloadSceneAssets()
@@ -44,22 +46,6 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    let id = 0
-    const tick = () => {
-      const elapsed = performance.now() - bootStart.current
-      const { albumsReady, sceneReady } = useBoot.getState()
-      if (albumsReady && sceneReady && elapsed >= MIN_BOOT_MS) {
-        setReady(true)
-        return
-      }
-      id = requestAnimationFrame(tick)
-    }
-
-    id = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(id)
-  }, [])
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (useUi.getState().activeMenu !== 'none') return
       if (e.key === 'Escape') requestUnfocus()
@@ -78,25 +64,61 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const enter = async () => {
-    await engine.init()
-    engine.setVolume(useStore.getState().volume)
+  useEffect(() => {
+    if (introMode !== 'none') return
+    // Render straight away so shaders compile while the page is still blank,
+    // then fade the room up once there is something to look at.
+    setSceneActive(true)
+    let live = true
+    void waitForAssets().then(() => {
+      if (!live) return
+      markIntroSeen() // keep the week counting from this visit, not the first one
+      setEntered(true)
+    })
+
+    // Without the unmute gate there has been no gesture, and an AudioContext
+    // built outside one starts suspended. Build it on the visitor's first
+    // interaction instead — they have to click something to play a record anyway.
+    const arm = () => {
+      window.removeEventListener('pointerdown', arm)
+      window.removeEventListener('keydown', arm)
+      void engine
+        .init()
+        .then(() => engine.setVolume(useStore.getState().volume))
+        .catch(() => {})
+    }
+    window.addEventListener('pointerdown', arm)
+    window.addEventListener('keydown', arm)
+    return () => {
+      live = false
+      window.removeEventListener('pointerdown', arm)
+      window.removeEventListener('keydown', arm)
+    }
+  }, [introMode])
+
+  const warmScene = useCallback(() => setSceneActive(true), [])
+
+  const reveal = useCallback(() => {
+    // The intro already created the AudioContext on its gesture; this just
+    // matches the graph to the stored volume before the room takes over.
+    void engine
+      .init()
+      .then(() => engine.setVolume(useStore.getState().volume))
+      .catch(() => {})
+    setSceneActive(true)
     setEntered(true)
-  }
+  }, [])
+
+  const dissolved = useCallback(() => setShowIntro(false), [])
 
   return (
     <>
       <VinylFavicon />
       <div className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}`}>
-        <Experience active={entered} />
+        <Experience active={sceneActive} />
       </div>
-      {showLoading && (
-        <LoadingAssemble
-          ready={ready}
-          entered={entered}
-          onEnter={enter}
-          onDissolved={() => setShowLoading(false)}
-        />
+      {showIntro && (
+        <YandhiIntro onWarmScene={warmScene} onReveal={reveal} onDissolved={dissolved} />
       )}
       {entered && <NowPlaying />}
       {entered && <SettingsGear />}
