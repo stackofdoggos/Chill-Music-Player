@@ -19,6 +19,12 @@ body,
   display: block;
 }
 
+/* Height of a 16:9 clip scaled to bleed past both viewport axes. Shared so the
+   intro's clips and the outro's iris measure against the same frame. */
+:root {
+  --clip-bleed-h: max(100vh, calc(100vw * 9 / 16));
+}
+
 /* ---------- scene + loading screen ---------- */
 .scene-wrap {
   position: fixed;
@@ -29,6 +35,39 @@ body,
 
 .scene-wrap--visible {
   opacity: 1;
+}
+
+/* The outro's last beat: the room is lifted above the intro and revealed
+   through the record's spindle hole. `clip-path: circle()` rather than a mask on
+   the video because only the clip-path interpolates reliably — masks would have
+   to cross-fade two gradients. The intro underneath is a flat white field by
+   then, so it needs no fade of its own; the circle simply grows over it.
+   The lift clears the intro at z-index 20, but it also clears the room's own
+   chrome at 13, so it is dropped as soon as the intro unmounts rather than being
+   held for the whole reveal. */
+.scene-wrap--iris {
+  z-index: 21;
+  opacity: 1;
+  transition: none; /* the room is already warm; it must not fade up as well */
+  /* The hole's measured radius, divided back out by the push-in so the scale
+     and the clip compose to it. Both animate together, so they stay matched. */
+  clip-path: circle(calc(0.09 / 1.08 * var(--clip-bleed-h)) at 50% 50%);
+  transform: scale(1.08);
+}
+
+/* The corners are the last thing the circle reaches, so it only ever needs the
+   half-diagonal — a hair over, to keep sub-pixel rounding off them. `hypot()`
+   rather than a vmax guess because the margin has to hold at every window shape,
+   and a guess safe on a square wastes most of the growth on a wide one.
+   The circle deliberately finishes before the push-in: the lift above comes off
+   the moment it lands, which is what lets the gear and light dot through, while
+   the room carries on settling under them. */
+.scene-wrap--iris-open {
+  clip-path: circle(calc(0.51 * hypot(100vw, 100vh)) at 50% 50%);
+  transform: scale(1);
+  transition:
+    clip-path 0.65s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .loading {
@@ -60,15 +99,6 @@ body,
   overflow: hidden;
   background: var(--intro-void);
   color: #1a1a1a;
-  transition:
-    opacity 1.5s cubic-bezier(0.33, 1, 0.68, 1),
-    visibility 1.5s;
-}
-
-.intro--hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* Clips stack in DOM order and swap with no transition — the handoff frames are
@@ -112,8 +142,8 @@ body,
      reaches the frame edge 0.36s after that, so the budget is ~0.71s. Staying
      well under it means a busy main thread can't leave a bar on screen. */
   --clip-move: 0.5s;
-  width: max(100vw, calc(100vh * 16 / 9));
-  height: max(100vh, calc(100vw * 9 / 16));
+  width: calc(var(--clip-bleed-h) * 16 / 9);
+  height: var(--clip-bleed-h);
   scale: 1;
 }
 

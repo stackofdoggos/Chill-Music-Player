@@ -75,6 +75,52 @@ The two identities every handoff depends on:
 `assemble[389] == spin[149]` (so assemble → spin[0] continues the rotation) and
 `assemble[266] == spin[26] == disassemble[0]` (the face-on pose the outro cuts from).
 
+**The outro ends by opening the room out of the record's spindle hole.** This works because the
+assemble was rendered starting *inside* that hole and pulling back, so reversed it flies into it.
+The room is lifted above the intro (`z-index`) and revealed with a growing `clip-path: circle()`
+— **not** a mask on the video, because only `clip-path` interpolates reliably; animating between
+two radial-gradient masks would have to cross-fade them. Nothing about the video being baked
+matters: no alpha or depth is needed, the room simply sits behind and the circle grows.
+The numbers that make it land (all in `IRIS`):
+- The hole's centre holds at **50.0% × 50–52%** of the frame through the whole approach, drifting
+  under 0.3%, so a fixed `circle(... at 50% 50%)` tracks it with no motion rig. Because that is
+  relative to the clip's own box it stays right at every window shape.
+- Freeze on `disassemble[250]` (== `assemble[16]`), where the frame is **pure white edge to edge**
+  (0% of it darker than 120) with the hole a grey disc dead centre at **9.04% of frame height**.
+  The iris therefore opens through flat colour with no detail to give its edge away, and that
+  white is 253 — the same as `--intro-void`.
+- **Never let it run past `disassemble[255]`.** `assemble[0..10]` is the blank sleeve held
+  pixel-identical and `assemble[11]` hard-cuts to the close-up, so that cut sits at
+  `disassemble[256]`, six frames past the freeze. The trigger fires early and then *snaps*:
+  snapping back a frame or two is invisible on a still, whereas overshooting shows the cut.
+- The room's push-in and the clip radius both animate, so the start radius is divided by the
+  starting scale — the two compose back to the measured hole.
+- The end radius is `0.51 * hypot(100vw, 100vh)` — just past the half-diagonal, since the corners
+  are the last thing the circle reaches. A `vmax` guess safe on a square window (70.7vmax) throws
+  away most of the growth on a wide one, which is what made the reveal finish long before the
+  transition did.
+
+**The lift comes off before the push-in finishes, and that is what puts the chrome on screen.**
+`.scene-wrap--iris` is `z-index: 21` to clear the intro at 20, but it also clears the room's own
+gear and light dot at 13, so holding it for the whole reveal kept them hidden — the dot only
+appeared at 1018ms, a third of a second after there was nothing left to reveal. So `clip-path` runs
+0.65s while `transform` runs 1s, and the `clip-path` `transitionend` moves `iris` to `settling`:
+lift off, intro unmounted, push-in still running under the chrome. Two rules hold it together:
+- **Unmounting the intro and dropping the lift must happen in the same commit.** Either alone puts
+  a full-screen layer over the other — drop the lift first and the white intro paints over the
+  room. They are both set in the one handler so React batches them; measured across 181 frames,
+  zero had the intro up without the lift.
+- **The end values must stay until the push-in lands**, hence `settling` keeping
+  `--iris-open` — removing them mid-transform snaps the scale.
+Measured at 1440×810: the circle covers the viewport at 489ms, the dot is topmost at its own centre
+from 660ms, and the scale reaches exactly 1 before the classes come off (no snap). The 2% margin
+holds with no corner leak at 16:9, square, ultrawide and portrait — verified by painting the page
+behind the room magenta and counting surviving pixels.
+
+To verify alignment after any change, pin `.scene-wrap--iris-open` to the opening size, screenshot,
+then hide `.scene-wrap` and screenshot again: the room circle and the video's hole must measure the
+same radius and centre (they currently match to 0.0px).
+
 **The intro plays once, then not again for a week** (`readIntroMode`): `full` on a first visit or
 after `FULL_INTRO_AFTER_MS`, `none` otherwise, and `none` never mounts `YandhiIntro` at all — App
 renders the room immediately and fades it up when `waitForAssets()` resolves. Two things that path

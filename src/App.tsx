@@ -24,6 +24,12 @@ export default function App() {
   const [sceneActive, setSceneActive] = useState(false)
   const [entered, setEntered] = useState(false)
   const [showIntro, setShowIntro] = useState(introMode === 'full')
+  /**
+   * The outro's closing move: the room opens out of the record's spindle hole.
+   * `settling` is the tail, once the hole has swallowed the screen — the room is
+   * back to normal stacking and only its push-in is still running.
+   */
+  const [iris, setIris] = useState<'none' | 'start' | 'open' | 'settling'>('none')
 
   useEffect(() => {
     preloadSceneAssets()
@@ -107,19 +113,47 @@ export default function App() {
       .catch(() => {})
     setSceneActive(true)
     setEntered(true)
+    setIris('start')
   }, [])
 
-  const dissolved = useCallback(() => setShowIntro(false), [])
+  useEffect(() => {
+    if (iris !== 'start') return
+    // Two frames: the clipped state has to be painted before the open state can
+    // transition away from it, or the browser collapses them into no animation.
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setIris('open'))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [iris])
 
   return (
     <>
       <VinylFavicon />
-      <div className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}`}>
+      <div
+        className={`scene-wrap${entered ? ' scene-wrap--visible' : ''}${
+          iris === 'start' || iris === 'open' ? ' scene-wrap--iris' : ''
+        }${iris === 'open' || iris === 'settling' ? ' scene-wrap--iris-open' : ''}`}
+        onTransitionEnd={(e) => {
+          // The hole lands first. Dropping the intro and dropping the room's lift
+          // have to happen together — either one alone puts a full-screen layer
+          // over the other — and together they are what lets the chrome through,
+          // a third of a second before the push-in finishes.
+          if (iris === 'open' && e.propertyName === 'clip-path') {
+            setShowIntro(false)
+            setIris('settling')
+          }
+          // Losing the end values mid-push would snap the scale, so they stay
+          // until it lands.
+          if (iris === 'settling' && e.propertyName === 'transform') setIris('none')
+        }}
+      >
         <Experience active={sceneActive} />
       </div>
-      {showIntro && (
-        <YandhiIntro onWarmScene={warmScene} onReveal={reveal} onDissolved={dissolved} />
-      )}
+      {showIntro && <YandhiIntro onWarmScene={warmScene} onReveal={reveal} />}
       {entered && <NowPlaying />}
       {entered && <SettingsGear />}
       {entered && <LightDot />}

@@ -7,7 +7,7 @@ import {
   ASSEMBLE_DURATION,
   ASSEMBLE_SETTLES_AT,
   CLIPS,
-  DISASSEMBLE_DURATION,
+  IRIS,
   MUSIC_VOLUME,
   SPIN_DURATION,
   SPIN_FACE_ON,
@@ -17,18 +17,16 @@ import {
 } from './introTimeline'
 import { align, atTime, fadeOut, once, sleep, waitForBuffered } from './mediaTiming'
 
-type Phase = 'gate' | 'buffering' | 'assemble' | 'spin' | 'faceOn' | 'disassemble' | 'revealing'
+type Phase = 'gate' | 'buffering' | 'assemble' | 'spin' | 'faceOn' | 'disassemble' | 'iris'
 
 /** Later phases paint over earlier ones, so a clip stays visible once it's shown. */
-const PHASE_ORDER: Phase[] = ['gate', 'buffering', 'assemble', 'spin', 'faceOn', 'disassemble', 'revealing']
+const PHASE_ORDER: Phase[] = ['gate', 'buffering', 'assemble', 'spin', 'faceOn', 'disassemble', 'iris']
 
 interface Props {
   /** Start rendering the room behind the still-opaque intro, to warm shaders. */
   onWarmScene: () => void
-  /** Begin the dissolve into the room. */
+  /** Frozen on the spindle hole — open the room out of it. */
   onReveal: () => void
-  /** The dissolve finished; safe to unmount. */
-  onDissolved: () => void
 }
 
 function useDeferred() {
@@ -50,7 +48,7 @@ function useDeferred() {
  * to a blank sleeve. `introTimeline.ts` has the frame math that makes the clip
  * handoffs seamless.
  */
-export function YandhiIntro({ onWarmScene, onReveal, onDissolved }: Props) {
+export function YandhiIntro({ onWarmScene, onReveal }: Props) {
   const [phase, setPhase] = useState<Phase>('gate')
   const [bubble, setBubble] = useState<BubbleState>('hidden')
   const [label] = useState(enterLabel)
@@ -115,7 +113,15 @@ export function YandhiIntro({ onWarmScene, onReveal, onDissolved }: Props) {
       dis.currentTime = 0
       dis.playbackRate = TIMING.disassembleRate
       await dis.play().catch(() => {})
-      await once(dis, 'ended', (DISASSEMBLE_DURATION / TIMING.disassembleRate) * 1000 + 4000)
+
+      // Stop on the spindle hole rather than running to the blank sleeve — the
+      // room opens out of the hole from here. See IRIS for why this must not
+      // overshoot. Racing a timeout keeps a stalled clip from parking the intro
+      // on a shard-covered frame: the snap lands on the hole either way.
+      const budget = (IRIS.trigger / TIMING.disassembleRate) * 1000 + 4000
+      await Promise.race([atTime(dis, IRIS.trigger), sleep(budget)])
+      dis.pause()
+      dis.currentTime = IRIS.frame
     }
 
     const run = async () => {
@@ -157,9 +163,9 @@ export function YandhiIntro({ onWarmScene, onReveal, onDissolved }: Props) {
       await playOutro()
 
       markIntroSeen()
-      setPhase('revealing')
-      if (musicRef.current) fadeOut(musicRef.current, TIMING.revealMs)
-      onReveal()
+      setPhase('iris')
+      if (musicRef.current) fadeOut(musicRef.current, IRIS.openMs)
+      onReveal() // App opens the hole and unmounts this once it has swallowed the screen
     }
 
     void run()
@@ -174,12 +180,7 @@ export function YandhiIntro({ onWarmScene, onReveal, onDissolved }: Props) {
   const onEnter = () => enter.resolve()
 
   return (
-    <div
-      className={`intro${bleed ? ' intro--bleed' : ''}${phase === 'revealing' ? ' intro--hidden' : ''}`}
-      onTransitionEnd={(e) => {
-        if (phase === 'revealing' && e.propertyName === 'opacity') onDissolved()
-      }}
-    >
+    <div className={`intro${bleed ? ' intro--bleed' : ''}`}>
       <video
         ref={assembleRef}
         className={`intro__clip${seen('buffering') ? ' is-shown' : ''}`}

@@ -30,8 +30,6 @@ export const CLIPS = {
 
 export const ASSEMBLE_DURATION = 390 / FPS
 export const SPIN_DURATION = 150 / FPS
-export const DISASSEMBLE_DURATION = 267 / FPS
-
 /**
  * Record face-on to camera, and the pixels the disassemble clip opens on.
  * Parking the spin loop here makes the cut into the outro invisible. The half
@@ -42,6 +40,40 @@ export const SPIN_FACE_ON = 26.5 / FPS
 
 /** The intro track's level. It plays over a still room, so it sits back a little. */
 export const MUSIC_VOLUME = 0.1
+
+/**
+ * The outro ends by opening the room out of the record's spindle hole, which
+ * works because the assemble was rendered starting *inside* that hole and
+ * pulling back — so reversed, the outro flies into it.
+ *
+ * Freeze on `disassemble[250]` (== `assemble[16]`): that frame is pure white
+ * edge to edge (0% of it darker than 120) with the hole a grey disc dead centre,
+ * so the iris opens through flat colour with no detail to give its edge away.
+ * The white measures 253 — the same as `--intro-void`.
+ *
+ * **Do not let it run past `disassemble[255]`.** `assemble[0..10]` is the blank
+ * sleeve held pixel-identical and `assemble[11]` hard-cuts to the close-up, so
+ * that cut lands at `disassemble[256]`, six frames past the freeze. The trigger
+ * fires early and then snaps, because snapping *back* a frame or two is
+ * invisible on a still whereas overshooting shows the cut.
+ */
+export const IRIS = {
+  /** Start watching here; polling can overshoot by a frame or two. */
+  trigger: 249 / FPS,
+  /** Snap to this. The half frame keeps `currentTime` inside frame 250. */
+  frame: 250.5 / FPS,
+  /** The hole's radius on that frame, as a fraction of the clip's height. */
+  startRadius: 0.09,
+  /**
+   * How long the whole reveal runs, and so how long the music has to fade under
+   * it. The hole itself is done sooner — see .scene-wrap--iris-open in
+   * styles.css, where it finishes early so the room's chrome isn't left waiting
+   * behind the intro — but the push-in lasts this long.
+   */
+  openMs: 1000,
+  /** The room starts pushed in this far and settles back as the hole opens. */
+  roomScale: 1.08,
+} as const
 
 /**
  * When the assemble's shatter stops reaching the frame edge, and the clips go
@@ -75,8 +107,6 @@ export const TIMING = {
   minSpinBeforeOutro: 1.5,
   /** Stop waiting for media to buffer and start anyway. */
   bufferTimeout: 25000,
-  /** Matches the .loading opacity transition in styles.css. */
-  revealMs: 1500,
 } as const
 
 const LAST_SEEN_KEY = 'chill.introLastSeen'
