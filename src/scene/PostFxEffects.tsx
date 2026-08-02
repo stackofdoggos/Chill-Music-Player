@@ -1,7 +1,19 @@
 import { useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Bloom, N8AO, Vignette } from '@react-three/postprocessing'
-import { BlendFunction, ChromaticAberrationEffect, NoiseEffect } from 'postprocessing'
+import {
+  Bloom,
+  BrightnessContrast,
+  HueSaturation,
+  N8AO,
+  ToneMapping,
+  Vignette,
+} from '@react-three/postprocessing'
+import {
+  BlendFunction,
+  ChromaticAberrationEffect,
+  NoiseEffect,
+  ToneMappingMode,
+} from 'postprocessing'
 import { Vector2 } from 'three'
 import { sampleAtmosphere } from './dayNight'
 import { SoftnessEffect } from './effects/SoftnessEffect'
@@ -9,6 +21,9 @@ import { TemporalBlendEffect } from './effects/TemporalBlendEffect'
 import { POST_FX_DEFAULTS, usePostFx } from '../state/postFx'
 import { useSettings } from '../state/settings'
 import { useStore } from '../state/store'
+
+/** Final grade, applied after tone mapping. */
+const GRADE = { contrast: 0.2, brightness: -0.03, saturation: 0.12 }
 
 export function PostFxEffects({ ao }: { ao: boolean }) {
   const dayPhase = useStore((s) => s.dayPhase)
@@ -59,6 +74,25 @@ export function PostFxEffects({ ao }: { ao: boolean }) {
         />
       )}
       <Bloom intensity={a.bloomIntensity} luminanceThreshold={a.bloomThreshold} mipmapBlur />
+      {/*
+        EffectComposer forces the renderer to NoToneMapping and expects tone
+        mapping as a pass. Without one everything above 1.0 hard-clipped, which
+        is why warm phases lost all highlight detail.
+
+        AGX because that is what the reference renders use: `layout.blend` is set
+        to "AgX - Medium High Contrast" at +0.35 exposure. AgX desaturates as it
+        clips, which is what keeps a blown window warm instead of white. The
+        contrast half of that look is not part of the transform, so GRADE below
+        stands in for it.
+      */}
+      <ToneMapping mode={ToneMappingMode.AGX} />
+      {/*
+        Grade after the tone curve. Without this the room sits in a narrow band
+        of pale midtones — the reference's depth comes from letting shadows fall
+        away, not from lighting everything evenly.
+      */}
+      <HueSaturation saturation={GRADE.saturation} />
+      <BrightnessContrast contrast={GRADE.contrast} brightness={GRADE.brightness} />
       <primitive object={softnessEffect} />
       <primitive object={chromaticEffect} />
       <primitive object={temporalEffect} />

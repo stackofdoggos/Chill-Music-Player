@@ -7,6 +7,7 @@ import { assetUrl } from '../assetUrl'
 import { useSettings } from '../state/settings'
 import { PLAYER_POS, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
+import { LIGHTMAP_LAYER } from './lightmap'
 import { useStore } from '../state/store'
 
 RectAreaLightUniformsLib.init()
@@ -34,6 +35,16 @@ export function Lighting() {
   const fillTarget = useRef<Object3D>(null)
   const lamp = useRef<PointLight>(null)
   const windowLight = useRef<RectAreaLight>(null)
+
+  useLayoutEffect(() => {
+    // The baked room shell lives on LIGHTMAP_LAYER and must not also receive the
+    // uniform ambient rig the bake replaces (three lights a mesh when it shares
+    // any layer). The sun is the exception: its direct light was subtracted out
+    // of the bake precisely so it can stay real-time.
+    for (const ref of [hemi, fill, windowLight]) ref.current?.layers.set(0)
+    sun.current?.layers.enable(LIGHTMAP_LAYER)
+    lamp.current?.layers.set(0)
+  })
 
   useLayoutEffect(() => {
     const bound: Object3D[] = []

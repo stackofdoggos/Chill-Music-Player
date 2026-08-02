@@ -7,6 +7,7 @@ import { useSettings } from '../state/settings'
 import { engine } from '../audio/engine'
 import { STATIONS } from './layout'
 import { effectiveDpr, sampleAtmosphere, DEFAULT_DAY_PHASE } from './dayNight'
+import { LIGHTMAP_LAYER } from './lightmap'
 import { PostFxEffects } from './PostFxEffects'
 import { Lighting } from './Lighting'
 import { SceneModelProvider } from './SceneModel'
@@ -45,6 +46,16 @@ function EngineUpdater() {
 }
 
 /**
+ * r3f re-applies `gl.shadowMap.enabled = !!shadows` from the Canvas prop on
+ * every render of the Canvas component, so setting it in `onCreated` alone was
+ * reverted on the next render and the scene drew with no real-time shadows at
+ * all. The object form keeps `enabled` true and leaves `type` to ShadowQuality
+ * (a boolean would force PCFSoftShadowMap and fight it). Module-level so the
+ * identity is stable across renders.
+ */
+const SHADOW_MAP = { enabled: true }
+
+/**
  * Swaps the shadow filter at runtime. Soft = VSM with a blur radius, which
  * reads like an area light (drei's PCSS shader is incompatible with three
  * r184, so VSM is the soft-shadow path).
@@ -71,6 +82,21 @@ function ShadowQuality() {
       for (const m of mats) m.needsUpdate = true
     })
   }, [gl, scene, soft])
+  return null
+}
+
+/**
+ * The lightmapped room shell sits on its own layer so the ambient rig can skip
+ * it; the camera and raycaster have to opt in or the shell disappears and stops
+ * answering clicks (wall/floor clicks drive requestUnfocus).
+ */
+function LightmapLayerAccess() {
+  const camera = useThree((s) => s.camera)
+  const raycaster = useThree((s) => s.raycaster)
+  useEffect(() => {
+    camera.layers.enable(LIGHTMAP_LAYER)
+    raycaster.layers.enable(LIGHTMAP_LAYER)
+  }, [camera, raycaster])
   return null
 }
 
@@ -101,6 +127,7 @@ export function Experience({ active }: { active: boolean }) {
   const dpr = effectiveDpr(dayPhase, resolutionMode, clarityView)
   return (
     <Canvas
+      shadows={SHADOW_MAP}
       frameloop={active ? 'demand' : 'never'}
       dpr={dpr}
       camera={{ fov: 40, position: STATIONS.overview.pos.toArray(), near: 0.05, far: 30 }}
@@ -112,6 +139,7 @@ export function Experience({ active }: { active: boolean }) {
       onPointerMissed={() => requestUnfocus()}
     >
       {active && <FpsLimiter />}
+      <LightmapLayerAccess />
       <ShadowQuality />
       <SceneBackground />
       <Lighting />

@@ -164,8 +164,12 @@ function paintCopy(dest: HTMLCanvasElement, src: CanvasImageSource) {
   ctx.drawImage(src, 0, 0, w, h)
 }
 
-/** Fixed bookcase grain soften (was settings slider value 20). */
-export const BOOKCASE_SMOOTH = 0.2
+/**
+ * Fixed bookcase grain soften. Kept very low: at 0.2 the Gaussian was wide
+ * enough (~40px on the 2k map) to erase the pores entirely, which is most of
+ * why the shelf read as flat plastic-brown rather than timber.
+ */
+export const BOOKCASE_SMOOTH = 0.04
 
 /**
  * Smoothed clones of the shelf walnut maps. `setAmount(0..1)` re-blurs
@@ -243,7 +247,9 @@ export function createWalnutSmoothBundle(
 
 /** Normal bump strength for a given smooth amount (1 = fully softened). */
 export function walnutNormalScale(amount: number): number {
-  return THREE.MathUtils.lerp(0.58, 0.08, THREE.MathUtils.clamp(amount, 0, 1))
+  // pore micro-shadow is what sells solid timber; the old 0.58 ceiling was too
+  // shy to read at arm's length in the shelf view
+  return THREE.MathUtils.lerp(0.9, 0.1, THREE.MathUtils.clamp(amount, 0, 1))
 }
 
 /** Resolve Blender empties (`shelf_board_0`) to the real mesh child (`shelf_board_0_mesh*`). */

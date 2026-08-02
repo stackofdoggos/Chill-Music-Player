@@ -20,6 +20,8 @@ volume knob, 33/45 selector, and a draggable tonearm. Audio is real downloaded a
 | `src/loading/YandhiIntro.tsx` | The loading sequence: unmute gate → buffer gate → assemble → spin loop → outro → reveal. Owns the phase machine and the three stacked `<video>` elements. |
 | `src/loading/mediaTiming.ts` | Media primitives: `waitForBuffered`, `atTime`, `once` (with timeout), `align`, `fadeOut`. |
 | `src/scene/dayNight.ts` | Keyframed 0–1 day-night atmosphere (lights, bloom, wall/window tints). `dayPhase` in store; panel in `DayNightMenu` (`src/ui/DayNightSlider.tsx`). |
+| `src/scene/lightmap.ts` | Baked Cycles GI for the room shell (see "Baked lighting" below). Applies `lightMap` to 5 meshes, moves them to `LIGHTMAP_LAYER`, neutralises their albedo, and cross-fades three baked sets by `dayPhase`. Dev handle: `__lightmap.on()/.off()`. |
+| `scripts/bake-lightmaps.py` | Regenerates `public/lightmaps/<set>_<mesh>.png` + `meta.json` from `layout.blend` via the blender-mcp bridge on port 9876. Lights it with a Nishita physical sky per set. ~2min for all three. |
 | `src/scene/layout.ts` | **Single source of truth for all world coordinates**: room/desk/player/shelf positions, camera stations per view, tonearm geometry solver (yaw ↔ groove radius ↔ album progress). |
 | `src/scene/Lighting.tsx` | Hemisphere + window key/fill directionals, interior lamp, Environment lightformers — all driven by `sampleAtmosphere(dayPhase)`. |
 | `src/audio/engine.ts` | Singleton Web Audio engine. Platter physics (`rate`, `platterAngle`), media element + vinyl EQ, quiet groove crackle, SFX playback, needle drop/seek logic. |
@@ -201,6 +203,89 @@ Other facts worth keeping:
 - Testing: `?intro=full` / `?intro=none` force a path. `__intro.forget()` /
   `__intro.lastSeenDaysAgo(n)` manipulate the 7-day `chill.introLastSeen` key.
 
+## Baked lighting (room shell)
+
+three.js has no global illumination, and the hemisphere/fill/window lights that
+stood in for it add the **same irradiance everywhere** — so the room shell had no
+window falloff, no corner darkening and no soft contact shadows. That, not
+texture quality, is what made the scene read flat. Cycles bakes those cues into
+`public/lightmaps/`.
+
+- **Only five meshes are baked**: `floor`, `ceiling`, `wall_back`, `wall_left`,
+  `wall_right`. They are the only ones whose **UV0 is already a clean 0-1
+  non-overlapping unwrap** (verified: uvArea == 1.000), so nothing needs
+  re-exporting from Blender. Every other mesh (shelf, desk, player) has
+  cube-projected overlapping UVs and would need a new UV layer first.
+- **`texture.channel = 0`** — three defaults `lightMap` to UV1, and these maps
+  live on UV0.
+- **What is baked is `total - sun_direct`**: window + sky + all bounce, but not
+  direct sunlight. The sun stays real-time so its shadows still sweep.
+  `Lighting.tsx` and `bake-lightmaps.py` must agree on this split.
+- **Layers do the exclusion.** Baked meshes sit alone on `LIGHTMAP_LAYER`; hemi,
+  fill, rect-area and lamp are pinned to layer 0; only the sun enables both.
+  three lights a mesh when they share **any** layer, so the shell cannot stay on
+  layer 0. Consequences: the camera **and the raycaster** must
+  `layers.enable(LIGHTMAP_LAYER)` (`LightmapLayerAccess` in `Experience.tsx`) or
+  the shell vanishes and stops answering clicks, and any fresh
+  `new THREE.Raycaster()` needs `layers.enableAll()` (`__hits` does).
+- **The HDRI is not layer-filtered**, so baked materials get `envMapIntensity = 0`
+  or the environment re-flattens what the bake fixed. Same for the ceiling's flat
+  emissive.
+- **Three sets are baked** — `night`, `day`, `golden` — as
+  `public/lightmaps/<set>_<mesh>.png`, anchored at `dayPhase` 0.0 / 0.48 / 0.70
+  with `night` repeated at 1.0 so the slider wraps. Two adjacent sets cross-fade
+  **in the shader**: `patchForBlend()` in `lightmap.ts` rewrites three's
+  `lights_fragment_maps` line to `mix()` a second sampler in. Swapping maps
+  instead would pop, and a CPU blend would upload a texture per frame.
+- **Scale is per map, not per set.** One small window means `wall_right` and
+  `wall_back` differ by ~50× in irradiance; a shared scale left `wall_back`
+  quantised to about seven 8-bit codes. Each map is normalised by its own peak,
+  the divisor is written into `public/lightmaps/meta.json`, and `lightmap.ts`
+  imports that file directly so the two cannot drift apart. Runtime intensity is
+  `scale * LIGHTMAP_EXPOSURE`.
+- **`LIGHTMAP_EXPOSURE` is deliberate, not a fudge.** The bake is physically
+  right and this room genuinely is dim — one 1.35×1.05m window in a 6.4×4.7m
+  plan, and the Cycles preview of the same rig is a dark, moody room. Keep the
+  baked *distribution* (that is where the realism is) and lift the level, the
+  way games use exposure. Raising the bake's sky strength instead would change
+  the ratios between surfaces.
+- **`wall_left` and `wall_right` share one material in the GLB**, so
+  `applyLightmaps` clones a material per mesh; without that they fight over one
+  set of maps and one intensity.
+- The bake writes a Cycles preview per set to `/tmp/lm_preview_<set>.png` from
+  the app's own `overview` station. Compare it against a browser screenshot to
+  tell whether a difference is the bake or the three.js side.
+
+Bake pitfalls that cost real time (all fixed in the script, don't reintroduce):
+**`wall_right` has no window hole** — it is a solid 4-vertex plane and the room
+is otherwise sealed except at the front, so a world/HDRI lights the interior not
+at all and an unsealed front floods it. `apertures()` builds an occluder wall
+carrying the real hole just outside it, seals the front, and sets
+`wall_right.visible_shadow = False` so light through the hole is not stopped by
+the wall it stands in for. **Never cut the hole into `wall_right` itself** — its
+UV0 must stay identical to `room.glb` or every baked pixel lands in the wrong
+place. Also: `window_glass` is emissive and 12mm from `wall_right`, which blows
+that wall to ~100× everything else unless hidden; Blender area lights emit along
+local **-Z**, so `R_y(+90)` aims into the room; a source coplanar with a wall is
+a singularity; and `wall_left`/`wall_right` share `wall_paint`, so the bake
+target node must be re-pointed per *object*, not per material. On Blender 5.x the
+sky node's Nishita enum is now `MULTIPLE_SCATTERING` and `dust_density` is
+`aerosol_density`.
+
+## Tone mapping
+
+`@react-three/postprocessing`'s `EffectComposer` **forces the renderer to
+`NoToneMapping`** and expects tone mapping as a pass. There wasn't one, so
+everything above 1.0 hard-clipped. `PostFxEffects.tsx` runs
+`<ToneMapping mode={ToneMappingMode.AGX} />` after Bloom, then a
+`HueSaturation` + `BrightnessContrast` grade.
+
+AGX because that is what the reference renders use: `layout.blend` is set to
+**"AgX - Medium High Contrast" at exposure +0.35**. AgX desaturates as it clips,
+which is what keeps a blown window warm instead of white. The *contrast* half of
+that look is not part of the transform, so `GRADE` stands in for it — on plain
+AgX with no grade the room reads flat and milky.
+
 ## Dev helpers (exposed on `window` in dev builds only)
 
 - `__store` — the zustand store. `__store.getState()` for everything; call actions directly.
@@ -208,6 +293,8 @@ Other facts worth keeping:
 - `__proj(x, y, z)` — projects a world point to client pixel coords via the live camera.
  Use this to compute click targets instead of guessing from screenshots.
 - `__intro` — intro visit memory: `.mode()`, `.forget()`, `.lastSeenDaysAgo(n)`, `.seen()`.
+- `__lightmap` — `.on()` / `.off()` to A/B the baked room-shell GI.
+- `__scene` — the live `THREE.Scene`. Handy with `traverse` for light/material state.
 
 ## Driving the app headlessly (browser MCP / CDP)
 
@@ -312,7 +399,17 @@ __engine.getProgress()                                   // should advance while
    intersections at a screen point, nearest first — use it whenever a click "does nothing".
    Note it ignores `visible=false` differences from r3f's raycaster; named meshes
    (`arm-base`, `arm-pivot-column`) read clearest.
-15. **Escape must not highlight UI triggers.** Closing a panel/overlay with Escape returns
+15. **`<Canvas shadows>` is the only switch that sticks.** r3f re-applies
+ `gl.shadowMap.enabled = !!shadows` from that prop on *every* render of the Canvas
+ component, so setting `enabled` in `onCreated` is reverted on the next render and the
+ whole scene draws with **no real-time shadows** — silently, with a shadow map still
+ allocated so everything looks configured. This was live for a long time and was most of
+ why the room read flat. `Experience.tsx` passes `shadows={SHADOW_MAP}` (an object, so
+ `type` is left to `ShadowQuality`; a boolean would force `PCFSoftShadowMap`). To check it
+ is really running, count `light.shadow.updateMatrices` calls against `scene.onBeforeRender`
+ calls over ~1s — they must match. Note `frameloop='demand'` means zero of both when the
+ pointer is still, so drive `pointermove` while sampling or you will misread it as broken.
+16. **Escape must not highlight UI triggers.** Closing a panel/overlay with Escape returns
    focus to the button that opened it (gear, light dot, etc.), which shows a focus ring or
    looks “stuck” highlighted. On Escape dismiss, call `blurMenuTriggers()` in
    `TopMenuOverlay.tsx`: `requestAnimationFrame` → `.blur()` on `.settings-gear`,

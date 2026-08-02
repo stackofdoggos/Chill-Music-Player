@@ -15,10 +15,17 @@ import { assetUrl } from '../assetUrl'
 import { engine } from '../audio/engine'
 import { dragActiveOrRecent, requestUnfocus, useStore } from '../state/store'
 import { ANCHOR_NAMES } from './anchors'
-import { isShelfFocusPoint } from './layout'
+import { isShelfFocusPoint, ROOM } from './layout'
 import { sampleAtmosphere } from './dayNight'
 import { woodTexture } from './textures'
 import { GLB_PATH, GLB_USE_DRACO } from './preloadScene'
+import {
+  applyLightmaps,
+  clearLightmaps,
+  LIGHTMAP_URLS,
+  lightmappedNames,
+  updateLightmapPhase,
+} from './lightmap'
 import {
   BOOKCASE_SMOOTH,
   createWalnutSmoothBundle,
@@ -28,8 +35,12 @@ import {
 
 const GLB_PATH_LOCAL = GLB_PATH
 
-/** Warm honey tint multiplied over the walnut albedo. */
-const WALNUT_TINT = new THREE.Color('#f2c49a')
+/**
+ * Near-neutral tint over the walnut albedo. The source map is already a rich
+ * dark walnut; the previous honey tint (#f2c49a) multiplied G and B down hard
+ * enough to turn it flat orange and hide the grain.
+ */
+const WALNUT_TINT = new THREE.Color('#f7f1e8')
 const WALNUT_EDGE = new THREE.Color('#3a1e12')
 /** Bookshelf pegs / feet — dark matte grey */
 const SHELF_BASE_METAL = new THREE.Color('#484a4f')
@@ -119,6 +130,12 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
     assetUrl('textures/walnut_nor.jpg'),
     assetUrl('textures/walnut_rough.jpg'),
   ])
+  const lightmaps = useTexture(LIGHTMAP_URLS) as Record<string, THREE.Texture>
+  const [wallDiff, wallNor, wallRough] = useTexture([
+    assetUrl('textures/wall_diff.jpg'),
+    assetUrl('textures/wall_nor.png'),
+    assetUrl('textures/wall_rough.jpg'),
+  ])
   const { scene, nodes } = useMemo(() => {
     if (!gltf.scene.userData.__roomSetup) {
       gltf.scene.traverse(setupMesh)
@@ -207,6 +224,40 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
         envMapIntensity: 0.25,
       })
     }
+
+    // Microcement on the three walls. The shell quads carry a 0-1 unwrap, so the
+    // repeat has to come from the wall's real size; the source tile is 2:1.
+    // (Per-texture transforms are independent in three, so this does not disturb
+    // the lightmap sharing the same UV0.)
+    const WALL_TILE_W = 3.0
+    wallDiff.colorSpace = THREE.SRGBColorSpace
+    const applyMicrocement = (name: string, widthM: number, heightM: number) => {
+      const mesh = nodes[name] as THREE.Mesh | undefined
+      const raw = mesh?.material
+      const mat = (Array.isArray(raw) ? raw[0] : raw) as MeshStandardMaterial | undefined
+      if (!mat) return
+      const repeat = new THREE.Vector2(widthM / WALL_TILE_W, heightM / (WALL_TILE_W / 2))
+      for (const [slot, tex] of [
+        ['map', wallDiff],
+        ['normalMap', wallNor],
+        ['roughnessMap', wallRough],
+      ] as const) {
+        const t = tex.clone()
+        t.wrapS = t.wrapT = THREE.RepeatWrapping
+        t.repeat.copy(repeat)
+        t.anisotropy = 8
+        t.colorSpace = slot === 'map' ? THREE.SRGBColorSpace : THREE.NoColorSpace
+        t.needsUpdate = true
+        ;(mat as unknown as Record<string, THREE.Texture>)[slot] = t
+      }
+      mat.normalScale = new THREE.Vector2(0.55, 0.55)
+      mat.roughness = 1
+      mat.metalness = 0
+      mat.needsUpdate = true
+    }
+    applyMicrocement('wall_back', ROOM.w, ROOM.h)
+    applyMicrocement('wall_left', ROOM.d + 2, ROOM.h)
+    applyMicrocement('wall_right', ROOM.d + 2, ROOM.h)
 
     const applyWood = (name: string, repeatX: number, repeatY: number, light = false, roughness = 0.7) => {
       const mesh = nodes[name] as THREE.Mesh | undefined
@@ -325,14 +376,32 @@ export function SceneModelProvider({ children }: { children: ReactNode }) {
       walnutSmooth.current?.dispose()
       walnutSmooth.current = null
     }
-  }, [nodes, walnutDiff, walnutNor, walnutRough])
+  }, [nodes, walnutDiff, walnutNor, walnutRough, wallDiff, wallNor, wallRough])
+
+  useEffect(() => {
+    applyLightmaps(nodes, lightmaps)
+    if (import.meta.env.DEV) {
+      ;(window as Window & { __lightmap?: unknown }).__lightmap = {
+        on: () => applyLightmaps(nodes, lightmaps),
+        off: () => clearLightmaps(),
+      }
+    }
+    return () => clearLightmaps()
+  }, [nodes, lightmaps])
 
   useFrame(() => {
-    const a = sampleAtmosphere(useStore.getState().dayPhase)
-    for (const ref of [backWallMat, leftWallMat, rightWallMat]) {
-      if (ref.current) ref.current.color.copy(a.wallColor)
+    const dayPhase = useStore.getState().dayPhase
+    const a = sampleAtmosphere(dayPhase)
+    updateLightmapPhase(dayPhase, lightmaps)
+    const baked = lightmappedNames()
+    for (const [name, ref] of [
+      ['wall_back', backWallMat],
+      ['wall_left', leftWallMat],
+      ['wall_right', rightWallMat],
+    ] as const) {
+      if (ref.current && !baked.has(name)) ref.current.color.copy(a.wallColor)
     }
-    if (ceilingMat.current) {
+    if (ceilingMat.current && !baked.has('ceiling')) {
       ceilingMat.current.emissive.copy(a.ceilingEmissive)
       ceilingMat.current.emissiveIntensity = a.ceilingEmissiveIntensity
     }

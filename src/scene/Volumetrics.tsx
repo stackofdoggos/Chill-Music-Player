@@ -76,7 +76,10 @@ export function Volumetrics() {
     if (!group.current) return
     const a = sampleAtmosphere(useStore.getState().dayPhase)
     const raw = shaftStrength(a)
-    const gain = mode === 'pronounced' ? 1.15 : 0.72
+    // Rebalanced down after the shell moved onto baked irradiance: these quads
+    // are additive, and against the brighter room the old gains washed the whole
+    // frame into milky haze rather than reading as a beam.
+    const gain = mode === 'pronounced' ? 0.78 : 0.46
     const intensity = raw * gain
     shaftMat.uniforms.uIntensity.value = intensity
     shaftMat.uniforms.uTime.value = state.clock.elapsedTime

@@ -29,13 +29,17 @@ export function CameraRig() {
       const w = window as unknown as {
         __proj: (x: number, y: number, z: number) => number[]
         __hits: (cx: number, cy: number) => string[]
+        __scene: THREE.Scene
       }
+      w.__scene = scene
       w.__proj = (x, y, z) => {
         const v = new THREE.Vector3(x, y, z).project(camera)
         return [((v.x + 1) / 2) * window.innerWidth, ((1 - v.y) / 2) * window.innerHeight]
       }
       w.__hits = (cx, cy) => {
         const ray = new THREE.Raycaster()
+        // the lightmapped room shell is off layer 0
+        ray.layers.enableAll()
         ray.setFromCamera(
           new THREE.Vector2((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1),
           camera,
